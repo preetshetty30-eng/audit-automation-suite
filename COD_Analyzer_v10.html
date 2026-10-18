@@ -1,0 +1,1477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>COD Analyser v10 — DP Audit</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F5F6F4; --card:#FFFFFF; --ink:#14181B; --slate:#4A5A66; --mute:#7A8892;
+  --rule:#D6DAD8; --rule-soft:#E8EBE9; --indigo:#2C3E5C;
+  --oxblood:#9B2C2C; --amber:#A16207; --verified:#14685A; --violet:#5B4B8A;
+  --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --serif:"IBM Plex Serif",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;padding:0 0 80px}
+.wrap{max-width:1420px;margin:0 auto;padding:0 24px}
+
+.masthead{border-bottom:2px solid var(--ink);padding:26px 0 16px;margin-bottom:22px}
+.masthead .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--indigo);font-weight:500;margin-bottom:8px}
+.masthead h1{font-family:var(--serif);font-size:30px;font-weight:700;letter-spacing:-.01em}
+.masthead .sub{color:var(--slate);font-size:13.5px;margin-top:7px;max-width:80ch}
+.privacy{display:inline-flex;align-items:center;gap:7px;margin-top:13px;font-family:var(--mono);font-size:11px;color:var(--verified);border:1px solid var(--verified);border-radius:2px;padding:4px 9px}
+.privacy .dot{width:6px;height:6px;border-radius:50%;background:var(--verified)}
+
+.drops{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.drop{border:1.5px dashed var(--rule);background:var(--card);border-radius:3px;padding:30px 22px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+.drop:hover,.drop.over{border-color:var(--indigo);background:#FBFCFB}
+.drop:focus-visible{outline:2px solid var(--indigo);outline-offset:3px}
+.drop h2{font-family:var(--serif);font-size:17px;font-weight:600;margin-bottom:6px}
+.drop p{color:var(--mute);font-size:12.5px}
+.drop .tag{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--indigo);margin-bottom:9px}
+.drop.opt .tag{color:var(--mute)}
+.drop.done{border-style:solid;border-color:var(--verified);background:#F6FAF8}
+.drop input{display:none}
+
+.filebar{display:flex;flex-wrap:wrap;gap:14px;align-items:baseline;justify-content:space-between;background:var(--card);border:1px solid var(--rule);border-left:3px solid var(--indigo);border-radius:2px;padding:12px 16px;margin-bottom:20px}
+.filebar .fname{font-family:var(--mono);font-size:12.5px;font-weight:500}
+.filebar .fmeta{font-family:var(--mono);font-size:11.5px;color:var(--mute);margin-top:3px}
+
+.panel{background:var(--card);border:1px solid var(--rule);border-radius:3px;padding:20px 22px;margin-bottom:14px}
+.panel h3{font-family:var(--serif);font-size:17px;font-weight:600;margin-bottom:4px}
+.panel .lede{font-size:12.5px;color:var(--slate);margin-bottom:16px;max-width:92ch}
+
+.typegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1px;background:var(--rule-soft);border:1px solid var(--rule-soft)}
+.ty{background:var(--card);padding:11px 13px}
+.ty .code{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--indigo)}
+.ty .n{font-family:var(--mono);font-size:19px;font-weight:600;float:right;line-height:1}
+.ty .mean{font-size:11.5px;color:var(--slate);margin-top:4px;line-height:1.4}
+
+.flowrow{display:flex;align-items:stretch;margin-bottom:4px}
+.flow-src{flex:none;width:190px;padding-right:20px;border-right:1px solid var(--rule)}
+.flow-src .n{font-family:var(--mono);font-size:32px;font-weight:600;line-height:1;letter-spacing:-.02em}
+.flow-src .l{font-size:12px;color:var(--slate);margin-top:6px;line-height:1.35}
+.flow-out{flex:1;padding-left:20px;display:flex;flex-direction:column;justify-content:center;gap:8px}
+.leg{display:flex;align-items:center;gap:12px}
+.leg .bar{height:20px;border-radius:1px;flex:none;min-width:3px}
+.leg .txt{font-size:12.5px;color:var(--slate);white-space:nowrap}
+.leg .txt b{font-family:var(--mono);font-size:14px;color:var(--ink);font-weight:600;margin-right:6px}
+.leg .pc{font-family:var(--mono);font-size:11px;color:var(--mute);margin-left:6px}
+.b-ok{background:var(--verified)} .b-inc{background:var(--amber)} .b-fail{background:var(--oxblood)}
+.b-gap{background:var(--mute)} .b-rev{background:var(--violet)}
+
+.caveat{margin-top:18px;padding:13px 15px;background:#FBF7EE;border-left:3px solid var(--amber);border-radius:0 2px 2px 0;font-size:12.5px;color:#5A4A22;line-height:1.55}
+.caveat b{color:var(--amber)}
+.caveat.info{background:#F1F4F8;border-left-color:var(--indigo);color:#2E3A48}
+.caveat.info b{color:var(--indigo)}
+.caveat code{font-family:var(--mono);font-size:11.5px;background:rgba(0,0,0,.05);padding:1px 4px;border-radius:2px}
+
+.tabs{display:flex;border-bottom:1px solid var(--rule);margin-top:22px;flex-wrap:wrap}
+.tab{appearance:none;background:none;border:none;border-bottom:2px solid transparent;font-family:var(--sans);font-size:13px;font-weight:500;color:var(--mute);padding:11px 15px;cursor:pointer;margin-bottom:-1px}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--indigo);font-weight:600}
+.tab .cnt{font-family:var(--mono);font-size:11px;color:var(--mute);margin-left:6px}
+.tab[aria-selected="true"] .cnt{color:var(--indigo)}
+.tab.warn .cnt{color:var(--oxblood);font-weight:600}
+
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;background:var(--card);border:1px solid var(--rule);border-top:none;padding:13px 16px}
+.fld{display:flex;flex-direction:column;gap:4px}
+.fld label{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.fld input,.fld select{font-family:var(--mono);font-size:12.5px;background:#fff;border:1px solid var(--rule);border-radius:2px;padding:6px 8px;min-width:126px;color:var(--ink)}
+.fld input:focus,.fld select:focus{outline:2px solid var(--indigo);outline-offset:-1px}
+.spacer{flex:1}
+.btn{font-family:var(--sans);font-size:12.5px;font-weight:500;background:var(--ink);color:#fff;border:1px solid var(--ink);border-radius:2px;padding:7px 14px;cursor:pointer}
+.btn.ghost{background:#fff;color:var(--ink);border-color:var(--rule)}
+.btn:focus-visible{outline:2px solid var(--indigo);outline-offset:2px}
+
+.tablewrap{background:var(--card);border:1px solid var(--rule);border-top:none;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+thead th{position:sticky;top:0;background:#EFF1EF;z-index:2;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--slate);font-weight:500;text-align:left;padding:9px 10px;border-bottom:1px solid var(--rule);white-space:nowrap;cursor:pointer}
+thead th:hover{color:var(--ink)}
+tbody td{padding:8px 10px;border-bottom:1px solid var(--rule-soft);vertical-align:top;white-space:nowrap}
+tbody tr.tx{cursor:pointer}
+tbody tr.tx:hover{background:#FAFBFA}
+td.m{font-family:var(--mono);font-size:12px}
+td.num{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+td.rail{border-left:3px solid transparent}
+.r-ok{border-left-color:var(--verified)!important}
+.r-inc{border-left-color:var(--amber)!important}
+.r-fail{border-left-color:var(--oxblood)!important}
+.r-rev{border-left-color:var(--violet)!important}
+.r-gap{border-left-color:var(--mute)!important}
+.pill{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:500;padding:2.5px 7px;border-radius:2px;border:1px solid}
+.p-ok{color:var(--verified);border-color:#B8D6CE;background:#F0F7F5}
+.p-inc{color:var(--amber);border-color:#E5D2A8;background:#FCF8EF}
+.p-fail{color:var(--oxblood);border-color:#E3BEBE;background:#FCF2F2}
+.p-rev{color:var(--violet);border-color:#CFC7E2;background:#F6F4FA}
+.p-gap{color:var(--slate);border-color:var(--rule);background:#F4F5F4}
+.edisbadge{display:inline-block;font-family:var(--mono);font-size:10px;padding:1.5px 6px;border-radius:2px;background:#EDF1F7;color:var(--indigo);border:1px solid #C7D3E2}
+
+tr.detail td{background:#FAFBFA;padding:0;border-bottom:2px solid var(--rule)}
+.stages{padding:12px 16px}
+.stages h5{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin-bottom:8px}
+table.st{width:auto;min-width:100%;font-size:11.5px}
+table.st th{position:static;background:#E7EAE8;font-size:9.5px;padding:6px 9px}
+table.st td{padding:5px 9px;white-space:nowrap;border-bottom:1px solid var(--rule-soft)}
+.fin1{color:var(--verified);font-weight:600} .fin2{color:var(--violet);font-weight:600} .fin0{color:var(--mute)}
+
+.exgroup{padding:13px 16px;background:#F9FAF9;border-bottom:1px solid var(--rule);border-top:1px solid var(--rule)}
+.exgroup h4{font-size:13px;font-weight:600;display:flex;align-items:center;gap:9px}
+.exgroup h4 .c{font-family:var(--mono);font-size:11px;font-weight:500;color:#fff;background:var(--oxblood);padding:1.5px 7px;border-radius:2px}
+.exgroup p{font-size:12px;color:var(--slate);margin-top:5px;max-width:100ch;line-height:1.55}
+
+.empty{padding:50px 20px;text-align:center;color:var(--mute);font-size:13px}
+.empty b{display:block;color:var(--ink);font-family:var(--serif);font-size:16px;margin-bottom:5px}
+.foot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:10px 16px;background:var(--card);border:1px solid var(--rule);border-top:none;font-family:var(--mono);font-size:11px;color:var(--mute)}
+.hide{display:none!important}
+
+
+.gapwrap{background:var(--card);border:1px solid var(--rule);border-top:none}
+.gap{border-bottom:1px solid var(--rule);padding:16px 18px;cursor:pointer}
+.gap:hover{background:#FAFBFA}
+.gap-h{display:flex;align-items:flex-start;gap:13px}
+.sev{flex:none;font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;
+  padding:3px 8px;border-radius:2px;color:#fff;margin-top:2px}
+.s-critical{background:var(--oxblood)} .s-review{background:var(--amber)}
+.s-low{background:var(--mute)} .s-cleared{background:var(--verified)}
+.gap-t{flex:1}
+.gap-t h4{font-size:14px;font-weight:600;line-height:1.35}
+.gap-t p{font-size:12.5px;color:var(--slate);margin-top:5px;max-width:100ch;line-height:1.55}
+.gap-t p.ask{color:var(--indigo);border-left:2px solid var(--indigo);padding-left:9px;margin-top:8px}
+.gap-t p.ask strong{font-weight:600}
+.gap-n{flex:none;text-align:right;font-family:var(--mono)}
+.gap-n .b{font-size:22px;font-weight:600;line-height:1}
+.gap-n .s{font-size:10.5px;color:var(--mute);margin-top:3px}
+.gap-rows{margin-top:13px;overflow-x:auto}
+.gap-rows table{font-size:11.5px}
+.gap-rows th{position:static;background:#EFF1EF;font-size:9.5px;padding:6px 9px}
+.gap-rows td{padding:5px 9px}
+
+.funnel{display:flex;flex-direction:column;gap:7px;margin-top:4px}
+.fstep{display:flex;align-items:center;gap:13px}
+.fstep .bar{height:26px;border-radius:1px;flex:none;min-width:4px;display:flex;align-items:center;
+  justify-content:flex-end;padding-right:8px;color:#fff;font-family:var(--mono);font-size:11px;font-weight:600}
+.fstep .lbl{font-size:12.5px;color:var(--slate)}
+.fstep .lbl b{color:var(--ink)}
+.f-all{background:var(--indigo)} .f-ddpi{background:var(--verified)}
+.f-edis{background:#3E7C6A} .f-near{background:var(--amber)}
+.f-norev{background:var(--mute)} .f-bad{background:var(--oxblood)}
+
+.ddpi{background:var(--card);border:1px solid var(--rule);border-radius:3px;padding:16px 18px;margin-bottom:14px}
+.ddpi h4{font-size:13.5px;font-weight:600;margin-bottom:4px}
+.ddpi p{font-size:12.5px;color:var(--slate);margin-bottom:10px;max-width:96ch;line-height:1.5}
+.ddpi textarea{width:100%;font-family:var(--mono);font-size:12px;border:1px solid var(--rule);
+  border-radius:2px;padding:9px;min-height:62px;resize:vertical;color:var(--ink)}
+.ddpi textarea:focus{outline:2px solid var(--indigo);outline-offset:-1px}
+.ddpi .row{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.ddpi .stat{font-family:var(--mono);font-size:11.5px;color:var(--verified)}
+
+.chk{border-bottom:1px solid var(--rule);padding:15px 18px;display:flex;gap:14px;align-items:flex-start}
+.chk .vn{flex:none;font-family:var(--mono);font-size:11px;color:var(--mute);width:22px;padding-top:3px}
+.chk .vd{flex:none;font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;
+  padding:3px 8px;border-radius:2px;color:#fff;margin-top:1px;width:74px;text-align:center}
+.v-yes{background:var(--verified)} .v-partial{background:var(--amber)} .v-no{background:var(--mute)}
+.chk .ct{flex:1}
+.chk .ct h4{font-size:13.5px;font-weight:600;line-height:1.35}
+.chk .ct .bs{font-family:var(--mono);font-size:10.5px;color:var(--indigo);margin-top:4px}
+.chk .ct p{font-size:12.5px;color:var(--slate);margin-top:6px;max-width:100ch;line-height:1.55}
+@media print{body{background:#fff;padding:0;font-size:10px}.drops,.controls .btn,.tabs,.filebar{display:none!important}
+ thead th{position:static}.tablewrap{overflow:visible}tbody td{white-space:normal}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:820px){.drops{grid-template-columns:1fr}.flowrow{flex-direction:column}
+ .flow-src{width:auto;border-right:none;border-bottom:1px solid var(--rule);padding:0 0 14px;margin-bottom:14px}.flow-out{padding-left:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <div class="eyebrow">Concurrent / Internal Audit — Depository Participant</div>
+  <h1>COD Analyser <span style="font-family:var(--mono);font-size:14px;font-weight:400;color:var(--mute);letter-spacing:.04em">v10</span></h1>
+  <p class="sub">Reads the CDSL Common Download file in UDiFF format, rebuilds every transaction from its
+  separate stage rows, decodes the codes against the UDiFF catalogue, and shows what actually happened to
+  each instruction — delivered, reversed, cancelled or still open.</p>
+  <div class="privacy"><span class="dot"></span>Runs entirely in this browser. No file is uploaded anywhere.</div>
+</header>
+
+<div id="dropstage" class="drops">
+  <div id="dz1" class="drop" tabindex="0" role="button">
+    <div class="tag">Required</div>
+    <h2>COD file</h2>
+    <p>COD_EXP_&lt;DPID&gt;_…csv from CDAS — select as many months as you like</p>
+    <input type="file" id="fi1" accept=".csv,text/csv" multiple>
+  </div>
+  <div id="dz2" class="drop opt" tabindex="0" role="button">
+    <div class="tag">Optional</div>
+    <h2>Broker eDIS log</h2>
+    <p>Cross-checks CDSL against the broker's own records · .csv or .xlsx · multiple accepted</p>
+    <input type="file" id="fi2" accept=".csv,.xlsx,text/csv" multiple>
+  </div>
+</div>
+
+<div id="report" class="hide">
+  <div class="filebar">
+    <div><div class="fname" id="fname"></div><div class="fmeta" id="fmeta"></div></div>
+    <button class="btn ghost" id="reset">Start over</button>
+  </div>
+
+  <section class="panel">
+    <h3>What is in this file</h3>
+    <p class="lede">Each tile is a transaction type, with the meaning taken from the UDiFF catalogue.
+    The count is transactions, not rows — one transaction is spread across several stage rows in the raw file.</p>
+    <div class="typegrid" id="typegrid"></div>
+  </section>
+
+  <section class="ddpi" id="ddpipanel">
+    <h4>DDPI register</h4>
+    <p>The files cannot tell the tool which clients have a DDPI on file — only you can. Paste those BOIDs
+    here and their transactions move out of the unexplained column and into a cleared group you still need
+    to vouch. One per line, or comma separated.</p>
+    <textarea id="ddpiin" placeholder="1210060000000552&#10;1210060000000611"></textarea>
+    <div class="row">
+      <button class="btn" id="ddpiapply">Apply</button>
+      <span class="stat" id="ddpistat"></span>
+    </div>
+  </section>
+
+  <section class="panel" id="funnelpanel">
+    <h3>Authorisation funnel</h3>
+    <p class="lede">Every electronic delivery, worked down to the residual that nothing accounts for.
+    The bottom figure is what needs an answer from the DP.</p>
+    <div class="funnel" id="funnel"></div>
+    <div class="caveat" id="funnelnote"></div>
+  </section>
+
+  <section class="panel" id="reconpanel">
+    <h3>Early pay-in reconciliation</h3>
+    <p class="lede">Early pay-in (<code style="font-family:var(--mono)">IDO</code>) is where client shares are
+    earmarked and moved to meet a sale obligation. This is what the stage chain says happened to each one.</p>
+    <div class="flowrow">
+      <div class="flow-src"><div class="n" id="r-total">0</div><div class="l">early pay-in<br>transactions</div></div>
+      <div class="flow-out" id="r-legend"></div>
+    </div>
+    <div class="caveat" id="qtycaveat"></div>
+  </section>
+
+  <div class="tabs" role="tablist">
+    <button class="tab warn" role="tab" data-view="gaps" aria-selected="true">Gaps <span class="cnt" id="c-gaps"></span></button>
+    <button class="tab" role="tab" data-view="chk" aria-selected="false">CAR checklist <span class="cnt" id="c-chk"></span></button>
+    <button class="tab" role="tab" data-view="txn" aria-selected="false">Transactions <span class="cnt" id="c-txn"></span></button>
+    <button class="tab" role="tab" data-view="edis" aria-selected="false">Electronic / eDIS <span class="cnt" id="c-edis"></span></button>
+    <button class="tab warn" role="tab" data-view="exc" aria-selected="false">Exceptions <span class="cnt" id="c-exc"></span></button>
+    <button class="tab hide" role="tab" data-view="reco" aria-selected="false" id="tab-reco">Cross-check <span class="cnt" id="c-reco"></span></button>
+  </div>
+
+  <div class="controls">
+    <div class="fld"><label for="f-from">From</label><input type="date" id="f-from"></div>
+    <div class="fld"><label for="f-to">To</label><input type="date" id="f-to"></div>
+    <div class="fld"><label for="f-typ">Type</label><select id="f-typ"></select></div>
+    <div class="fld"><label for="f-dir">Direction</label><select id="f-dir"></select></div>
+    <div class="fld"><label for="f-auth">Authorisation</label><select id="f-auth"></select></div>
+    <div class="fld"><label for="f-out">Outcome</label><select id="f-out"></select></div>
+    <div class="fld"><label for="f-cl">Client</label><select id="f-cl"></select></div>
+    <div class="fld"><label for="f-isin">ISIN</label><select id="f-isin"></select></div>
+    <div class="fld"><label for="f-q">Search</label><input type="search" id="f-q" placeholder="any reference…"></div>
+    <div class="spacer"></div>
+    <button class="btn ghost" id="clearf">Clear filters</button>
+    <button class="btn ghost" id="dpnote">DP query note</button>
+    <button class="btn" id="export">Export this view</button>
+  </div>
+
+  <div id="gapwrap" class="gapwrap hide"></div>
+  <div id="chkwrap" class="gapwrap hide"></div>
+  <div id="exhead"></div>
+  <div class="tablewrap" id="tablewrap"><table id="tbl"><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
+  <div class="foot"><span id="showing"></span><span id="qtysum"></span></div>
+</div>
+</div>
+
+<script>
+"use strict";
+const CODES = {"TxnTyp":{"DMT":"Dematerialization Instruction / Demat","RMT":"Rematerialization Instruction / Remat","REP":"Redemption/ Repurchase","DFP":"Delivery Free of Payment Instruction / Transaction","RFP":"Receipt Free of Payment Instruction","NDO":"Delivery Out Instruction / BO Obligation","PLG":"Pledge Initiation Instruction/ Pledge","PCN":"Pledge Confirmation","HYP":"Hypothecation Instruction","PIV":"Pledge invocation instruction","PCL":"Pledge closure instruction / Unpledge","PCC":"Pledge Closure Confirmation / Auto Unpledge","HYC":"Hypothecation Confirmation","PIC":"Pledge Invocation Confirmation / Confiscate","IDO":"Irreversible Delivery Out Instruction / Early Pay-in","IDD":"Inter Depository Transfer Instruction (DFP/Delivery)","IDR":"Inter Depository Transfer Instruction (RFP/Receipt)","FRZ":"Account Freezing / unfreezing","DFZ":"Account Unfreezing","ATS":"Account Transmission  / One to One Transmission","ATC":"Account Transmission cum Closure / Account Transfer","ATM":"One To Many transmission","DMU":"DIS Master Upload (Creation and Modification)","DES":"Conversion (MF) / Destat","RES":"Reconversion (MF) / Restat","IST":"Inter Settlement Transfer Instruction","CMD":"CM Pool Delivery Instruction","CMR":"CM Pool Receipt Instruction","RIN":"Receipt-In Intimation","CAD":"Corporate Action (Debit) / Corporate Action","CAC":"Corporate Action (Credit)","LIR":"Lock-in Release","ADO":"Auto Do Transfer Instruction","ACD":"ACA Debit / Auto Corporate Action","ACC":"ACA Credit","FFD":"Freeze For Delivery","HLD":"Hold initiation","HRI":"Hold Release instruction","HCN":"Hold confirmation (Target DPs end \u2013 Confirmation of Hold instruction)","HRC":"Hold Release confirmation (Target DPs end)","EDI":"EGR Deposit instruction","EWI":"EGR Withdrawal instructions","CCT":"Pool \u2013 Pool Account transfer (valid only from CC\u2019s CM Pool)","BPY":"BSE Payout","NPY":"NSE Payout","NPN":"NSE Payin","IPO":"IPO","CER":"CH Escrow release","NSP":"NSE SLB Payin","NSO":"NSE SLB Payout","BPZ":"BSE Payout[2nd stage]","WTR":"Withheld release","PBO":"Payin from BO[OSE]","SSO":"Switch In Switch Out","NDU":"NDU","TTZ":"Txn Type Zero","CSM":"CISA Movement","DTR":"Demat to RDG","RTD":"RDG to Demat"},"TxnCd":{"FAIL":"FAILED","SBM":"SETUP BY MAKER","RBC":"REJECTED BY CHECKER","1MTM":"One to Many TRANSMISSION MAKER","RC1MT":"FOR REJECT CHECKER One to Many TRANSMISSION","DBM":"DELETED BY MAKER","CDPV":"CREDIT DEMAT PENDING VERIFICATION","CDPC":"CREDIT DEMAT PENDING CONFIRMATION","CRPC":"Credit Remat Pending Confirmation","FZSTUP":"Credit Safekeep Balance","LINBC":"Credit Lock-in Balance /SETUP REJECT BY PLEDGEE CHECKER","ERMRK":"Credit Earmark Balance","CPLSBL":"Credit Pledge Setup balance","CPLGBL":"Credit Pledgee Balance in Pledgee BO","CPLBL":"Credit Pledge Balance","DPLBL":"Debit Pledge Balance","CRPLBL":"Credit Re-pledge Balance of pledgor","CRD":"Credit Current Balance","DDPV":"Debit Demat Pending Verification balance","DDPC":"Debit Demat Pending Confirmation balance","DRPCBL":"Debit Remat Pending Confirmation","DSFKBL":"Debit Safe Keep Balance","DLIB":"Debit Lock-in Balance","RERMK":"Debit Earmark Balance / Reverse Earmark","DPSB":"Debit Pledge Setup Balance","DPEB":"Debit Pledgee BO Balance","DBT":"Debit Current Balance","DRPLBL":"Debit Re-Pledge balance","MDFY":"Modify","SBDM":"Setup By DP Maker","SMBDP":"Setup Modified by DP","CBRM":"Confirmed by RTA Maker","DBDP":"DELETED BY DP","SARDC":"SETUP ACCEPTED / REJECTED BY DP CHECKER","CARRTC":"CONFIRMATION ACCEPTED / REJECTED BY RTA CHECKER","CARRVC":"CONFIRMATION ACCEPT / REJECT REVERSED BY RTA CHECKER","SWTRC":"SWITCH TRANSACTION REJECT BY  CHECKER","SWTSM":"SWITCH TRANSACTION SETUP BY MAKER","SWTSAC":"SWITCH TRANSACTION SETUP ACCEPT BY CHECKER","SWTRVC":"SWITCH TRANSACTION REVERSAL BY  CHECKER","SWTDMR":"SWITCH TRANSACTION  DELETE OF SETUP MAKER RECORDS","SWTDCR":"SWITCH TRANSACTION  DELETE OF CHECKER APPROVED RECORDS","SWDCRV":"SWITCH TRANSACTION  DELETE OF CHECKER REVERSAL DONE RECORDS","SWMSM":"SWITCH TRANSACTION  MODIFY FOR SETUP MAKER RECORDS","SWMCRV":"SWITCH TRANSACTION  MODIFY FOR CHECKER REVERSAL DONE RECORDS","ACEOD":"AUTO CANCELLED IN EOD / NDU CANCELLED IN EOD","ACRPG":"AUTO CANCELLED DURING RTW 2 REPORT GENERATION","RTCAM":"RTA CONFIRMATION ACCEPT BY MAKER","RTCRM":"RTA CONFIRMATION REJECT BY MAKER","RTCAC":"RTA CONFIRMATION ACCEPT BY CHECKER","RTCRC":"RTA CONFIRMATION REJECT BY CHECKER","CDFCA":"CLOSED DUE TO FILE CA","ACENRF":"AUTO CANCELLED IN EOD DUE TO NON RECEIPT OF REVERSE FEED FROM RTA","READPC":"REVERSE EARMARKING ACCEPT AT DP/CDS END","RERDPC":"REVERSE EARMARKING REJECT AT DP/CDS END","REARTC":"REVERSE EARMARKING ACCEPT AT RTA/CDS END","RERRTC":"REVERSE EARMARKING REJECT AT RTA/CDS END","MODRCV":"Modified / Received","FZSBL":"BO Level Freeze Setup","UFZ":"Unfreeze","CTDACA":"Cancelled / Transferred due to Auto CA","FZSMKR":"Freeze Setup By Maker","FZCRJT":"Freeze Checker Reject","FZCRVL":"Freeze Checker Reversal","FZMMKR":"Freeze Modify By Maker","UFZMKR":"Unfreeze Setup By Maker","UFZCRJ":"Unfreeze Checker Reject","MPAUM":"Margin Pledge Auto unpledge Maker","MRCPGM":"Margin Re Pledge Confiscate Setup Initiated pledgee Maker","MPCPGM":"Margin Pledge Confiscate Setup Initiated pledgee Maker","SIPGRM":"Setup Initiated by Pledgor Maker","SAPGEM":"SETUP ACCEPT / REJECT / REVERSAL BY PLEDGEE MAKER","MPIPGM":"Margin Pledge Setup Initiated by Pledgor Maker","MPAPLM":"Margin Pledge Setup Accept by Pledgee Maker","MRIPGM":"Margin Re-Pledge Setup Initiated by Pledgor Maker","MRAPGC":"Margin Re-Pledge Setup Approve by Pledgor Checker","MRAPLM":"Margin Re-Pledge Setup Accept by Pledgee Maker","MRAUM":"Margin Repledge Auto unpledge Maker","MRUIPGM":"Margin Repledge Unpledge Setup Initiated pledgor Maker","MRUAPGC":"Margin Repledge Unpledge Setup Approved pledgor Checker","MRUAPLM":"Margin Repledge Unpledge Setup Accept pledgee Maker","MPUIPGM":"Margin Pledge Unpledge Setup Initiated By Pledgor Maker","MPUAPGC":"Margin Pledge Unpledge Setup Approved By Pledgor Checker","MPUAPLM":"Margin Pledge Unpledge Setup Accept By Pledgee Maker","PPOTPA":"Pledge Setup Approved by Pledgor Checker (Pending otp Authentication)","PCPOTPA":"Pledge Cancelled In Eod Due To Pending Otp Authentication","PLCEOD":"Pledge Cancel In Eod","CREOD":"Cancelled / Rejected in EOD","RVEOD":"Reversal In Eod","CDACA":"Cancelled Due To Auto CA","PLMOM":"Pledgee Modify Maker","PLMOCA":"Pledgee Modify Checker Accept","PLMOCR":"Pledgee Modify Checker Reject","PSPGC":"Pending / Overdue Setup by Pledgor Checker","PRVPGC":"Pledge Reversal by Pledgor Checker","MODPGM":"Modification initiated by Pledgor Maker","NDUSM":"NDU Setup setup by Maker","NDUMM":"NDU Setup Modify Maker","NDUTM":"NDU Terminate Maker","NDUSCA":"NDU Setup by Checker Accept","NDUSCR":"NDU Setup by Checker Reject","NDUCACA":"NDU Cancelled due to auto CA","NDUCRV":"NDU Setup by Checker Reversal","NDUMMO":"NDU Setup Maker Modification(Maker stage Record)","NDUMCA":"NDU Modify checker Accept","NDUMCR":"NDU Modify checker Reject","NDUMCRV":"NDU Modify checker Reversal","NDUTCA":"NDU terminate Checker Accept","NDUTCR":"NDU terminate Checker Reject","BOCSM":"BOC Setup Maker","BOCCR":"BOC SET UP CHECKER REJECT","BOCCRV":"BOC setup Checker Reversal","DSMR":"Deletion of Setup Maker Records","DRVT":"Deletion of reversal transactions","MODSMR":"Modify Setup Maker Records","MODCRV":"Modify Checker Reversal Done Records","SCR":"Setup Checker Reject / Rejected Otp Authenticated Transaction/ OTP Not Entered / Rejected By Investor","SCRV":"Setup Checker Reversal","DRSMR":"Delete / Reject Setup Maker records","DRCRV":"Delete / Reject Checker Reversal Done Records","SETUP":"Setup","DEL":"Delete","SCA":"Setup By Checker Accept","EPCRJ":"Delete/Overdue Earlypayin Cancellation / Rejection Of Ep Due To Cc Obligation Not Found","RCVPYT":"Received in Payout","EPRVM":"Earlypayin Reversal Maker","EPRVCA":"Earlypayin Reversal Checker Accept","EPRVCR":"Earlypayin Reversal Checker Reject","MODCA":"Modify checker Approved records","DRCAR":"Delete / Reject for Checker Approved Records","CNCLTR":"cancel TRADE","STPMKR":"setup MAKER","STPCRV":"Setup Checker Reversal","MODMR":"Modify Setup maker records","MODVRF":"modified / VERIFIED","SIDTPR":"Sent for Inter Depository Processing","IDTPRC":"INTER DEPOSITORY PROCESSING COMPLETE","IDTPRR":"INTER DEPOSITORY PROCESSING - REJECTED","DFT":"Default","PIMA":"PENDING INVESTMENT MANAGER AUTHENTICATION","ABIM":"ACCEPTED BY INVESTMENT MANAGER","RBIM":"REJECTED BY INVESTMENT MANAGER","MPCBP":"Margin Pledge Cancelled by Pledgor","RSTCNF":"RESTAT CONFIRMED","ADFCE":"AUTOMATIC DELETION FROM CDS END","SOC":"Setup Obligation Confirmation","RRM":"Restat Request Modify","ODISD":"Overdue - insufficient stamp duty","POC":"Pending OTP Confirmation","OCS":"OTP Confirmed Successfully","NTCEOD":"NDU Termination CANCELLED IN EOD","NMMEOD":"NDU Setup Modify Maker Cancelled in EOD"},"DISTpInd":{"PHY":"For Physical,","FAX":"for FAX,","ESP":"For Electronic-SPEEDe / ELECTRONIC","ESE":"for Electronic-SPICE","EDS":"for Electronic- DSC,","EOT":"for Electronic- Others,","DGW":"for Demat Gateway","PRT":"PRE-TRADE","POT":"POST-TRADE","OFM":"OFF-MARKET","DDP":"DDPI","DFT":"Default","CPI":"CUSPA pledge invocation cum transfer"},"ChanlInd":{"ONL":"Online","CUP":"CDAS Upload","EON":"EASI Online","EUP":"EASI Upload","BPI":"BP Web","DMI":"DM","SMS":"SMS","SPD":"SPEEDE","SPI":"SPEEDE_INDIRECT","IMP":"Investor Margin Pledge","SOD":"SOD / EOD","PBR":"Process by RTA","DFT":"Default","IRM":"IRMS","MFS":"MutualFund SOA","MFR":"MutualFund Repurchase SOA","CMP":"Commercial Paper","CMS":"CMS","TLS":"TPLAS","TFC":"TXN IS FROM CH","API":"CDAS API","JPI":"CDAS JAVA API","MTF":"Margin Trading Funding","CCI":"CCIL","RTA":"Register and Transfer Agent"},"MktTpAndId":{"3DM":"3D MARKET","ACP":"ACCOUNT PERIOD","PDA":"AUCT PHY STK DERIVATIVE","AUN":"AUCTION / AUCTION NORMAL","AAP":"AUCTION A/C PERIOD","ADD":"AUCTION DELV DERIVATIVES","AUP":"AUCTION PHYSICAL","AUS":"AUTO SEC LEND","BDE":"BAD DELIVERY","BLK":"BLOCK DEALS","BUA":"BUY IN AUCTION","BB":"BUYBACK(BB) / BUYBACK","COM":"COMP.OBJECTION","COA":"CORPORATE ACTION","COB":"CORPORATE BENEFITS","CB":"CORPORATE BOND","CB0":"Corporate Bond . T+0","CB1":"Corporate Bond . T+1","CB2":"Corporate Bond . T+2","DS":"DEBT SEGMENT","DSA":"DEBT SEGMENT - AUCTION","DT0":"DEBT SEGMENT T+0","DT1":"DEBT T1","DTA":"DEBT T1 - AUCTION","DT2":"DEBT T2","DEL":"DELISTING(DL) / DELISTING","E1":"E+1","E2":"E+2","E3":"E+3","E4":"E+4","E5":"E+5","EG":"EGOLD","EA1":"EGR Auction / EGR T+1 AUCTION","ER1":"EGR Rolling Normal (T+1) / EGR T+1 ROLLING","ET1":"EGR T+1","ESI":"ESILVER","FGR":"F GROUP","GS":"G-SEC NORMAL","GR":"G-SEC REPLENISHMENT","GW":"G-SEC WITHHELD","I0":"ICDM T+0","I1":"ICDM T+1","I2":"ICDM T+2","IN1":"INACTIVE","IN2":"INACTIVE","IO":"INST MARKET ODD LOT","INS":"INSTITUTIONAL","IM":"INSTITUTIONAL MARKET","IRA":"IRF AUCTION","IRN":"IRF NORMAL","ITS":"ITP FOR SME (G) / ITP FOR SME","ITP":"ITP FOR SME (G) (T+1) / ITP","LR":"LIQUID REDEMPTION","LS":"Liquid Subscription (TO)","MAB":"MANDI BADLA","MFR":"MF - Repurchase / MUTUAL FUND-REDEMPTION","MFS":"MF - Subscription / MUTUAL FUND-SUBSCRIPTION / NORMAL SUBSCRIPTION","MFL":"MF Subscription - Liquid / LIQUID SUBSCRIPTION","MR2":"MFSS Redemption - T+2 (G)","MR4":"MFSS Redemption - T+4 (H)","MF1":"MFSS T + 1","MF2":"MFSS T + 2","MF3":"MFSS T + 3","MF4":"MFSS T + 4","MF":"MUTUAL FUND","RLN":"NORMAL","NDD":"NORMAL DELV DERIVATIVES","NR":"NORMAL REDEMPTION","ODL":"ODD LOT","OFF":"OFFER","OFH":"Offer for Sale (H)","OFS":"Offer for Sale (OFS) / OFFER FOR SALE","NSR":"OFFER FOR SALE (T+2)","OS1":"OFS(T+1)","OS2":"OFS(T+2) / OFST2","PHY":"PHYSICAL","PSD":"PHYSICAL STK DERIVATIVE","RFL":"REPO FORWARD LEG","RL":"REPO READY LEG (T+0) / REPO LEG T+0","RL1":"REPO READY LEG (T+1) / REPO LEG T+1","RDM":"Retail Debt Market / RETAIL MARKET","RDL":"RETAIL MARKET INST LOT","RDN":"RETAIL MKT INST ODD LOT","RLA":"Rolling Auction / AUCTION ROLLING","ROM":"ROLLING MANDI BADLA","RML":"ROLLING MKT LOT","ROL":"ROLLING ODD LOT","SL":"SLB","SLB":"SLB Lend / SLB FIRST LEG","ST":"SLB Lend Return / SLB RETURN LEG","SLA":"SLB Lend Return Auction / SLB AUCTION BUY-IN","SO2":"SO+2","SP3":"SP+3","SMT":"SPECIAL MARKET TYPE","SPE":"SPECIAL SETTLEMENT","T0N":"T+ 0 NORMAL / T+0","T0A":"T+0 - AU","T1":"T+1","T1A":"T+1 - AU","T1S":"T+1  ITP FOR SME","T1N":"T+1  NORMAL","T1R":"T+1  ROLLING / Rolling Normal (T+1)","TT1":"T+1  TRADE FOR TRADE / Trade To Trade  (T+1)","T1D":"T+1 DAY","T10":"T+10 / T+10 DAYS","TAU":"T+10 - AU","S10":"T+10 DAYS-SO","T2":"T+2","RLE":"T+2 - AU","T2D":"T+2 DAYS","T2S":"T+2 DAY-S","T2G":"T+2 DAYS - G","T2Y":"T+2 DAYS-SO","T3":"T+3","T3U":"T+3 - AU","T4":"T+4","T4U":"T+4 - AU","T4D":"T+4 DAYS","T4S":"T+4 DAYS-SO","T5":"T+5","T5U":"T+5 - AU","T6":"T+6","T6U":"T+6 - AU","T7":"T+7","T7U":"T+7 - AU","T7D":"T+7 DAYS","T7S":"T+7 DAYS-SO","T8":"T+8","T8U":"T+8 - AU","T9":"T+9","T9U":"T+9 - AU","TKO":"TAKEOVER(TO) / TAKEOVER","TDR":"TENDER OFFER","TT2":"Trade to Trade","TCB":"TRI PARTY REPO CORP BOND","TPF":"TRI-PARTY FORWARD LEG","TPR":"TRI-PARTY READY LEG","DFT":"Default","SLR":"SLB-R","LWF":"Liquidity Window Facility"},"BuySellInd":{"B":"Buy","S":"Sell","D":"Default"},"CustdlTxnFlg":{"CTR":"Custodial Transaction","NCT":"Non Custodial Transaction","DFT":"Default","PM":"PMS"},"FreeOrLckInFlg":{"FRE":"Free","LCK":"Lock-in","DFT":"Default"},"PldgTp":{"NRC":"Normal Closure / Unpledge","UNC":"Unilateral Closure / Auto Unpledge","DFT":"Default"}};
+
+/* ---------- CSV ---------- */
+function parseCSV(text){
+  if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
+  const rows=[];let row=[],f="",q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else if(c==='"') q=true;
+    else if(c===',') { row.push(f); f=""; }
+    else if(c==='\n'){ row.push(f); f=""; rows.push(row); row=[]; }
+    else if(c!=='\r') f+=c;
+  }
+  if(f.length||row.length){row.push(f);rows.push(row);}
+  if(!rows.length) return [];
+  const hdr=rows[0].map(h=>cleanVal(h));
+  return rows.slice(1).filter(r=>r.some(v=>v!=="")).map(r=>{const o={};hdr.forEach((h,i)=>o[h]=cleanVal(r[i]));return o;});
+}
+
+// Some systems export CSV with every value wrapped as ="value" so Excel keeps
+// leading zeros on BOIDs and settlement numbers. Left in place, nothing matches
+// and every transaction looks absent from the log, so strip it on the way in.
+function cleanVal(v){
+  let s=String(v??"").trim();
+  if(s.startsWith('="')&&s.endsWith('"')&&s.length>=3) s=s.slice(2,-1).trim();
+  else if(s.startsWith("='")&&s.endsWith("'")&&s.length>=3) s=s.slice(2,-1).trim();
+  return s;
+}
+const num=v=>{const n=parseFloat(v);return isNaN(n)?0:n;};
+const mean=(f,v)=>(CODES[f]&&CODES[f][v])||"";
+
+/* ---------- build transactions ---------- */
+let TXN=[],EXC=[],RECO=[],META={},HASLOG=false;
+
+// Stage codes that carry the instructing client, as opposed to the
+// pool/CM account used for the intermediate leg of an early pay-in.
+const CLIENT_STAGES=["SCA","ERMRK","RERMK","SETUP","SARDC","EPRVCA","EPCRJ","FZSBL","UFZ"];
+
+function buildTxns(rows){
+  const g=new Map();
+  rows.forEach(r=>{ const k=r.TxnID||("_"+Math.random()); if(!g.has(k)) g.set(k,[]); g.get(k).push(r); });
+
+  // Identify the CM pool / settlement account. On an early pay-in or a payout
+  // the pool sits on the intermediate leg alongside the real client, so the
+  // account that appears in the most multi-account transactions is the pool.
+  const coCount=new Map();
+  g.forEach(grp=>{
+    const accts=[...new Set(grp.map(r=>r.ClntId).filter(Boolean))];
+    if(accts.length>1) accts.forEach(a=>coCount.set(a,(coCount.get(a)||0)+1));
+  });
+  let POOL="",best=0;
+  coCount.forEach((n,a)=>{ if(n>best){best=n;POOL=a;} });
+
+  const out=[];
+  g.forEach((grp,id)=>{
+    grp.sort((a,b)=>num(a.LineNb)-num(b.LineNb));
+    const codes=grp.map(r=>r.TxnCd);
+    const set=new Set(codes);
+    const typ=grp[0].TxnTyp;
+    const chain=codes.join(" › ");
+
+    // The instructing client: prefer a stage that names the BO, then any
+    // account that is not the pool, and only fall back to the pool when the
+    // transaction genuinely belongs to it (a broker obligation setup).
+    const stageRow=grp.find(r=>CLIENT_STAGES.includes(r.TxnCd)&&r.ClntId&&r.ClntId!==POOL);
+    const nonPool=grp.find(r=>r.ClntId&&r.ClntId!==POOL);
+    const client=(stageRow||nonPool||grp[0]).ClntId;
+    // No client account appears on this transaction at all — it is a movement
+    // on the broker's own pool or settlement account. Excluded from every
+    // client-authorisation finding, since no client lost securities.
+    const poolOnly=client===POOL;
+    const others=[...new Set(grp.map(r=>r.ClntId).filter(x=>x&&x!==client))];
+
+    // Direction is read from the client's own rows, not the pool leg, which
+    // carries the opposite sign on a payout.
+    const cRows=grp.filter(r=>r.ClntId===client&&r.BuySellInd);
+    const bs=(cRows[0]||grp[0]).BuySellInd||"";
+    const dir=bs==="B"?"Buy / receipt":bs==="S"?"Sell / delivery":"Not applicable";
+
+    // electronic authorisation is recorded on the setup-stage rows only,
+    // so test the whole transaction, not one row
+    const disSet=new Set(grp.map(r=>r.DISTpInd).filter(Boolean));
+    const elec=disSet.has("ESP");
+    const disSrl=(grp.find(r=>r.DISSrlNb)||{}).DISSrlNb||"";
+
+    const qtyAt=(code,fld)=>grp.filter(r=>r.TxnCd===code).reduce((s,r)=>s+num(r[fld]),0);
+    const earmarked=qtyAt("ERMRK","AccptdQty");
+    const released =qtyAt("RERMK","AccptdQty");
+    const reversed =grp.filter(r=>r.TxnCd==="EPRVCA")
+                       .reduce((s,r)=>s+(r.ActlQty!==""?num(r.ActlQty):num(r.AccptdQty)),0);
+    // settled = accepted qty on the client-side debit that actually moved balance
+    // On the client debit row Qty is the quantity actually debited, while
+    // AccptdQty carries the ORIGINAL earmark and does not move when part of
+    // the earmark is reversed. Reading AccptdQty overstates the debit on every
+    // partial reversal — earmark 500, reversed 361, debited 139, but
+    // AccptdQty still reads 500. Qty is already net of reversals, so no
+    // further netting is applied.
+    const dbtRows=grp.filter(r=>r.TxnCd==="DBT"&&r.FinFlg==="1"&&r.ClntId===client);
+    const settled=dbtRows.reduce((s,r)=>s+num(r.Qty),0);
+    // Securities returned to the client against the same settlement — an
+    // off-market correcting entry, for example. These offset the delivery when
+    // reconciling to the settlement obligation.
+    // Only an off-market return counts as a correcting entry. An exchange
+    // payout (NPY) also credits the client against a settlement number, but it
+    // is the buy leg of a different trade — offsetting a delivery with it would
+    // wrongly cancel out a genuine debit.
+    const CORRECTION_TYPES=["DFP","IDD"];
+    const creditedBack=CORRECTION_TYPES.includes(grp[0].TxnTyp)
+      ? grp.filter(r=>r.TxnCd==="CRD"&&r.FinFlg==="1"&&r.ClntId===client&&r.SctiesSttlmTxId)
+           .reduce((s,r)=>s+num(r.Qty),0)
+      : 0;
+    // Held only to show the movement; it is not netted off settled again.
+    const reversedQty=grp.filter(r=>r.TxnCd==="EPRVCA")
+                         .reduce((s,r)=>s+(r.ActlQty!==""?num(r.ActlQty):num(r.AccptdQty)),0);
+
+    // A payout debits the pool and credits the client. Judging credit or
+    // debit from the transaction as a whole would report the pool's side,
+    // so look only at rows that move the client's own balance.
+    const cDbt=grp.some(r=>r.TxnCd==="DBT"&&r.ClntId===client&&r.FinFlg==="1");
+    const cCrd=grp.some(r=>r.TxnCd==="CRD"&&r.ClntId===client&&r.FinFlg==="1");
+
+    let outcome,cls;
+    if(set.has("EPCRJ")){outcome="Cancelled by CDSL";cls="fail";}
+    else if(set.has("EPRVCA")&&codes.filter(c=>c==="RERMK").length>1){outcome="Reversed, then delivered";cls="ok";}
+    else if(set.has("EPRVCA")){outcome="Early pay-in reversed";cls="rev";}
+    else if(set.has("ERMRK")&&set.has("RERMK")){outcome="Delivered";cls="ok";}
+    else if(set.has("ERMRK")){outcome="Earmarked, not released";cls="inc";}
+    else if(set.has("FZSBL")&&set.has("UFZ")){outcome="Frozen then unfrozen";cls="gap";}
+    else if(set.has("FZSBL")){outcome="Freeze set";cls="inc";}
+    else if(set.has("UFZ")){outcome="Unfreeze";cls="gap";}
+    else if([...set].every(c=>c==="SETUP")){outcome="Obligation set up only";cls="gap";}
+    else if(cCrd&&!cDbt){outcome="Credit received";cls="ok";}
+    else if(cDbt){outcome="Debited";cls="ok";}
+    else if(set.has("CRD")){outcome="Credit received";cls="ok";}
+    else {outcome="Other";cls="gap";}
+
+    const dates=grp.map(r=>r.BizDt).filter(Boolean).sort();
+    out.push({
+      txnId:id, typ, typMean:mean("TxnTyp",typ), chain, outcome, cls,
+      client, other:others.join(", "),
+      isin:grp[0].ISIN, qty:Math.max(...grp.map(r=>num(r.Qty))),
+      earmarked, released, reversed, settled, creditedBack, netSettled:settled,
+      elec, disTp:[...disSet].join("/"), disTpMean:[...disSet].map(d=>mean("DISTpInd",d)).filter(Boolean).join(" / "),
+      disSrl,
+      chan:grp[0].ChanlInd, chanMean:mean("ChanlInd",grp[0].ChanlInd),
+      mkt:grp[0].MktTpAndId, mktMean:mean("MktTpAndId",grp[0].MktTpAndId),
+      bs, dir, pool:POOL, poolOnly,
+      settle:grp[0].SctiesSttlmTxId, ucc:grp.map(r=>r.UnqClntId).find(Boolean)||"",
+      cm:grp[0].UnqClrMmbId, tm:grp[0].BrkrOrCtdnPtcptId,
+      execDt:grp.map(r=>r.ExecDt).find(Boolean)||"",
+      from:dates[0]||"", to:dates[dates.length-1]||"",
+      nStages:grp.length, rows:grp
+    });
+  });
+  out.sort((a,b)=>(a.from||"").localeCompare(b.from||"")||num(a.rows[0].LineNb)-num(b.rows[0].LineNb));
+  return out;
+}
+
+/* ---------- authorisation assessment ---------- */
+// The broker's log carries the CDSL transaction id directly: epi_ep_txn_id on
+// an EarlyPayIn_Response, txn_id on an EdisResponse. That is an exact join to
+// TxnID in the COD, so fuzzy key matching is only a fallback for rows where
+// the id is missing.
+let DDPI=new Set();
+
+function assessAuth(txns,logRows){
+  const idMap=new Map();          // CDSL TxnID -> log evidence
+  const authByKey=new Map();      // client|ISIN|settlement -> eDIS authorisations
+  const epiSeq=new Map();         // req_seq_no -> payload (to enrich the response)
+
+  logRows.forEach(r=>{
+    if(r.log_type==="EarlyPayIn_Payload"&&r.req_seq_no) epiSeq.set(r.req_seq_no,r);
+  });
+
+  logRows.forEach(r=>{
+    const when=(r.log_time||"").slice(0,10).replace(/\//g,"-");
+    if(r.log_type==="PrepareDataForEdisFormat"){
+      const k=[r.boid,r.record_isin,r.record_settle_id].join("|");
+      if(!authByKey.has(k)) authByKey.set(k,[]);
+      authByKey.get(k).push({qty:num(r.record_quantity),when,ref:r.record_txn_req_id});
+    }
+    if(r.log_type==="EarlyPayIn_Response"&&r.epi_ep_txn_id){
+      const pay=epiSeq.get(r.req_seq_no)||{};
+      idMap.set(r.epi_ep_txn_id,{kind:"Early pay-in marking",when,
+        // the xlsx export puts the settlement in settle_id, the csv in either
+        settle:pay.ep_settle_id||pay.settle_id||"",
+        isin:pay.ep_isin||"",qty:num(pay.ep_qty),seq:r.req_seq_no});
+    }
+    if(r.log_type==="EdisResponse"&&r.txn_id)
+      idMap.set(r.txn_id,{kind:"eDIS authentication",when,settle:"",isin:"",qty:0});
+  });
+
+  txns.forEach(t=>{
+    const hit=idMap.get(t.txnId);
+    t.logHit=!!hit;
+    t.logKind=hit?hit.kind:"";
+    const auths=authByKey.get([t.client,t.isin,t.settle].join("|"))||[];
+    // Re-authentication replaces rather than accumulates, so the ceiling is
+    // the largest single authentication, not the sum.
+    t.authQty=auths.length?Math.max(...auths.map(a=>a.qty)):0;
+    t.authN=auths.length;
+
+    if(t.disSrl){ t.authTier="physical"; t.authSrc="Physical DIS "+t.disSrl; t.authCls="phys"; }
+    else if(!t.elec&&!["IDO","DFP","IDD"].includes(t.typ)){ t.authTier="na"; t.authSrc="Not applicable"; t.authCls="na"; }
+    else if(t.authN){ t.authTier="edis"; t.authCls="edis";
+      t.authSrc="eDIS "+t.authQty.toLocaleString("en-IN")+" authorised"; }
+    else if(DDPI.has(t.client)){ t.authTier="ddpi"; t.authSrc="Covered by DDPI on file"; t.authCls="ddpi"; }
+    else if(hit){ t.authTier="marked"; t.authCls="stand";
+      t.authSrc="Marked by broker, no eDIS for this ISIN"; }
+    else { t.authTier="absent"; t.authCls="none"; t.authSrc="Not in broker log at all"; }
+  });
+
+  // ---- utilisation per client + ISIN + settlement ----
+  // Under-use is normal: a client may authorise 100 and sell 20. Only use in
+  // excess of what was authenticated is a finding.
+  // SETUP-only transactions carry the exchange obligation for that settlement.
+  // Comparing total settled against it answers whether repeated markings caused
+  // a duplicate debit, without the DP having to check anything.
+  const oblig=new Map();
+  txns.filter(t=>t.chain==="SETUP"||/^SETUP( › SETUP)*$/.test(t.chain)).forEach(t=>{
+    const k=[t.isin,t.settle].join("|");
+    oblig.set(k,(oblig.get(k)||0)+t.qty);
+  });
+  // A SETUP obligation sits on the broker's pool account and may cover several
+  // clients at once. Where it does, it is not a per-client ceiling, so the
+  // comparison is made across all clients on that obligation rather than
+  // against each one — otherwise every client appears to have the full
+  // obligation available to them.
+  const obligClients=new Map();
+  txns.filter(t=>t.typ==="IDO"&&!t.poolOnly).forEach(t=>{
+    const k=[t.isin,t.settle].join("|");
+    if(!obligClients.has(k)) obligClients.set(k,new Set());
+    obligClients.get(k).add(t.client);
+  });
+
+  const util=new Map();
+  txns.filter(t=>t.typ==="IDO"&&!t.poolOnly).forEach(t=>{
+    const k=[t.client,t.isin,t.settle].join("|");
+    if(!util.has(k)) util.set(k,{client:t.client,isin:t.isin,settle:t.settle,
+      txns:[],earm:0,settled:0,reversed:0,net:0,credited:0,auth:t.authQty,authN:t.authN,from:t.from});
+    const u=util.get(k);
+    u.txns.push(t); u.earm+=t.earmarked; u.settled+=t.settled;
+    u.reversed=(u.reversed||0)+t.reversed; u.net=(u.net||0)+t.netSettled;
+    u.credited=(u.credited||0)+(t.creditedBack||0);
+    u.auth=Math.max(u.auth,t.authQty); u.authN=Math.max(u.authN,t.authN);
+    if(t.from<u.from) u.from=t.from;
+  });
+  // A correcting credit is often booked as its own transaction, so sweep the
+  // whole population for client credits carrying the same ISIN and settlement.
+  const creditBack=new Map();
+  txns.forEach(t=>{
+    if(!t.creditedBack) return;
+    const k=[t.client,t.isin,t.settle].join("|");
+    creditBack.set(k,(creditBack.get(k)||0)+t.creditedBack);
+  });
+
+  // For a shared obligation the reconciliation is across all clients on it,
+  // so each group needs the aggregate figures, not just its own.
+  const sharedNet=new Map();
+  [...util.values()].forEach(u=>{
+    const k=[u.isin,u.settle].join("|");
+    if((obligClients.get(k)||new Set()).size>1)
+      sharedNet.set(k,(sharedNet.get(k)||0)+u.net);
+  });
+
+  const UTIL=[...util.values()].map(u=>Object.assign(u,{
+    sharedNet:sharedNet.get([u.isin,u.settle].join("|")),
+    ddpi:DDPI.has(u.client),
+    n:u.txns.length,
+    excessEarm:u.authN?u.earm-u.auth:0,
+    excessSettled:u.authN?u.net-u.auth:0,
+    credited:creditBack.get([u.client,u.isin,u.settle].join("|"))||0,
+    obligShared:(obligClients.get([u.isin,u.settle].join("|"))||new Set()).size>1,
+    // Only carried where the obligation belongs to this client alone. Where it
+    // covers several clients it is a broker-level figure and showing it against
+    // each client implies headroom none of them has.
+    oblig:((obligClients.get([u.isin,u.settle].join("|"))||new Set()).size>1)
+            ? undefined : oblig.get([u.isin,u.settle].join("|")),
+    obligAll:oblig.get([u.isin,u.settle].join("|")),
+    txnId:u.txns.map(t=>t.txnId).join(", "),
+    qty:u.settled, outcome:u.authN?"eDIS "+u.auth.toLocaleString("en-IN"):"no eDIS",
+    authSrc:u.authN?"Authorised "+u.auth.toLocaleString("en-IN"):"No eDIS for this ISIN"
+  }));
+  return UTIL;
+}
+
+/* ---------- CAR checklist ---------- */
+// The CDSL risk-prone CAR points on eDIS, each mapped to what these two files
+// can and cannot evidence. "no" means no amount of analysis of a COD file or an
+// application log will answer it — it needs a document, a portal walkthrough or
+// a system demonstration.
+function buildChecklist(txns,util,logRows,hasLog){
+  const ido=txns.filter(t=>t.typ==="IDO");
+  const esp=txns.filter(t=>t.elec);
+  const pr=hasLog?logRows.filter(r=>r.log_type==="PrepareDataForEdisFormat"):[];
+  const has=f=>hasLog&&pr.length&&pr.some(r=>r[f]);
+  const all=(f,v)=>hasLog&&pr.length&&pr.every(r=>r[f]===v);
+  const uniq=f=>[...new Set(pr.map(r=>r[f]).filter(Boolean))];
+
+  // where do electronic deliveries credit to
+  const credAccts=new Set();
+  esp.forEach(t=>t.rows.filter(r=>r.TxnCd==="CRD"&&r.FinFlg==="1").forEach(r=>credAccts.add(r.ClntId)));
+  // electronic transactions settled off-market, on a client account
+  const offMkt=esp.filter(t=>!["IDO","NDO"].includes(t.typ)&&!t.poolOnly);
+  // electronic transactions with no settlement reference
+  const noSettle=esp.filter(t=>!t.settle);
+  // authorisation coverage
+  const unevidenced=util.filter(u=>!u.authN&&u.net>0.0005&&!u.ddpi).length;
+  const days=uniq("num_of_days");
+  const settlePerReq=hasLog?pr.every(r=>r.record_settle_id&&r.record_settle_id.indexOf(",")<0):false;
+
+  const C=[];
+  const add=(n,point,verdict,basis,detail)=>C.push({n,point,verdict,basis,detail});
+
+  add(1,"e-DIS captures all details otherwise captured in physical DIS","partial",
+    "Field coverage in the application log",
+    hasLog?`The eDIS request records client ID, ISIN, quantity, settlement number and execution date. It does not carry an instruction serial number equivalent to the DIS serial, and the log holds no signature or authentication artefact. Compare against your physical DIS format to complete the point.`
+          :"Load the broker log to evidence this.");
+
+  add(2,"Instruction is towards actual transfer to meet a single settlement obligation","yes",
+    "Settlement reference on each request, and delivery traced to the obligation",
+    hasLog?`Every one of the ${pr.length} eDIS requests carries exactly one settlement number${settlePerReq?"":" (check: some carry more than one)"}. Deliveries are reconciled to the settlement obligation in the Gaps tab.`
+          :"Load the broker log to evidence this.");
+
+  add(3,"Mandate authorises transfer of specific securities for on-market settlement only","partial",
+    "eDIS presence per ISIN and settlement; market type on the transaction",
+    `${esp.length} electronic transactions, of which ${offMkt.length} settled off-market on a client account${offMkt.length?" — see the schedule":" (none)"}. Authorisation coverage per security and settlement is tested in the Gaps tab${unevidenced?`, where ${unevidenced} group(s) have none`:", with none unevidenced"}. The mandate wording itself is a document review.`);
+
+  add(4,"Mandate pertains to a single settlement number / settlement date","partial",
+    "Settlement number and validity period on the request",
+    hasLog?`Each request carries one settlement number, which satisfies the first limb. Validity is logged as ${days.join(", ")||"not captured"} day(s) on every request — a window longer than one settlement cycle is worth putting to the DP, since the point contemplates a single settlement date.`
+          :"Load the broker log to evidence this.");
+
+  add(5,"Securities are credited only to the client's trading member pool account","yes",
+    "Credit destination on every electronic transaction",
+    `Credits on electronic transactions land in ${credAccts.size} account(s): ${[...credAccts].join(", ")||"none"}. Confirm the account is the trading member pool account for this DP; the file cannot tell you the account's category.`);
+
+  add(6,"DP provides a facility to revoke or cancel the mandate","no",
+    "Not evidenced by either file",
+    "Neither the COD nor the application log records a revocation or cancellation event. This needs a portal walkthrough or a system demonstration, plus a sample of revocations from the DP.");
+
+  add(7,"Mandate is in the DP's favour and does not authorise any assignee","no",
+    "Document review",
+    "Read the executed mandate. Nothing in transaction data speaks to this.");
+
+  add(8,"Mandate requires return of securities transferred erroneously","partial",
+    "Off-market returns visible in the COD",
+    `Returns of securities to a client against a settlement are detected and offset in the reconciliation. Whether the mandate contains the clause is a document review.`);
+
+  add(9,"Mandate does not facilitate off-market transfers or trades without consent","partial",
+    "Transaction type and DIS type together",
+    offMkt.length?`${offMkt.length} electronic transaction(s) settled off-market on a client account — examine each.`
+      :"No electronic transaction settled off-market on a client account in this period, which supports the point. The mandate wording is a document review.");
+
+  add(10,"Mandate does not allow the DP to open an email ID for the client","no",
+    "Document review","Read the executed mandate.");
+
+  add(11,"Mandate does not prohibit issuing DIS to the BO or operating the account","partial",
+    "Continued physical DIS use is corroborating evidence",
+    `${txns.filter(t=>t.disSrl).length} transaction(s) in this period were authorised on a physical slip, which indicates the client retains the ability to instruct on paper. The mandate wording is a document review.`);
+
+  add(12,"Two factor authentication on login to the DP portal","no",
+    "Not evidenced by either file",
+    "The application log carries no authentication artefact — no login record, security question, TPIN or OTP reference. This needs a system demonstration and a screenshot walkthrough.");
+
+  add(13,"IP address / device logs and SMS / email message logs are stored","no",
+    "Not present in the extract supplied",
+    "The log supplied contains no IP address, device identifier, user agent, session or SMS/email despatch field. That does not mean the DP fails the point — it means the extract does not evidence it. Request the access and communication logs separately.");
+
+  add(14,"A report exists to check DIS given online by the client","partial",
+    "The supplied log is itself such a report",
+    hasLog?`A report was produced and covers ${pr.length} eDIS request(s) and ${logRows.filter(r=>r.log_type==="EarlyPayIn_Payload").length} marking(s). Completeness is the open question: the Gaps tab shows transactions settled in CDSL with no corresponding entry, so satisfy yourself the report is complete before signing the point.`
+          :"Load the broker log to evidence this.");
+
+  add(15,"Back office can identify transactions executed through the online portal","partial",
+    "DISTpInd on the CDSL record",
+    `${esp.length} transaction(s) carry the electronic marker, so the transactions are identifiable. Note the marker is set by the broker in its own API call rather than derived by CDSL, so it evidences the broker's assertion, not an independent check.`);
+
+  return C;
+}
+
+/* ---------- gap finder ---------- */
+function buildGaps(txns,util,hasLog,spanEnd){
+  const G=[];
+  const add=(sev,title,why,rows,ask)=>{ if(rows.length) G.push({sev,title,why,ask,rows,n:rows.length,
+    qty:rows.reduce((s,r)=>s+(r.settled||0),0)}); };
+
+  if(hasLog){
+    // 1. debited but the broker's own log has no record of the instruction
+
+
+    // 2. used more than the client authenticated
+    add("critical","Earmarked more than the client authorised",
+      "The client authenticated a quantity through eDIS and the broker earmarked more than that against the same security and settlement. Using less than authorised is normal; using more is not.",
+      util.filter(u=>u.excessEarm>0.0005).map(u=>Object.assign({},u,{
+        note:"authorised "+u.auth.toLocaleString("en-IN")+", earmarked "+u.earm.toLocaleString("en-IN")})),
+      "Explain the excess and confirm the client authorised it.");
+
+    add("critical","Settled more than the client authorised",
+      "Shares delivered out exceed the quantity the client authenticated for that security and settlement.",
+      util.filter(u=>u.excessSettled>0.0005).map(u=>Object.assign({},u,{
+        note:"authorised "+u.auth.toLocaleString("en-IN")+", settled "+u.settled.toLocaleString("en-IN")})),
+      "Explain the excess and confirm the client authorised it.");
+
+    // 3. no eDIS for the security at all — clients without a DDPI only
+    // One finding, not two. Whether the transaction is missing from the log
+    // entirely or present only as a broker-side marking, the conclusion is the
+    // same — no client authorisation can be evidenced. The difference is what
+    // was found, which is a column rather than a separate heading.
+    const evidence=u=>u.txns.every(t=>t.authTier==="absent")
+      ? "Nothing in the broker log"
+      : "Marked by the broker, no eDIS authentication";
+
+    // Corroborated where the debit reconciles to the settlement obligation.
+    // Where the obligation covers several clients the comparison is the
+    // aggregate across them, since no client-specific figure exists.
+    const reconciles=u=>{
+      if(u.obligShared) return u.obligAll!==undefined&&u.obligAll!==null
+        &&Math.abs((u.sharedNet||0)-u.obligAll)<=0.0005;
+      return u.oblig!==undefined&&u.oblig!==null&&Math.abs(u.net-u.oblig)<=0.0005;
+    };
+
+    const unauth=util.filter(u=>!u.authN&&u.net>0.0005&&!u.ddpi);
+
+    add("review","Sell authorisation not evidenced",
+      "Securities left these accounts and were not reversed, and no eDIS authentication, DDPI or settlement obligation accounts for them. Where the Detail column says the quantity reconciles, the delivery amount is not in question — what is missing is any record in the broker application log that the instruction was ever raised, which is an audit-trail gap in its own right. This says the authorisation has not been located in the records supplied, not that none exists.",
+      // A settlement obligation evidences that the client sold, which covers a
+      // missing eDIS. It cannot cover a transaction the broker's own system
+      // has no record of raising — that is an audit-trail gap in its own right,
+      // so those stay regardless of whether the quantity reconciles.
+      unauth.filter(u=>!reconciles(u)||u.txns.every(t=>t.authTier==="absent"))
+            .map(u=>Object.assign({},u,{evidence:evidence(u),
+              note:reconciles(u)
+                ? "quantity reconciles to the obligation — the gap is the missing record, not the amount"
+                : "quantity does not reconcile to a settlement obligation"})),
+      "Evidence the client authorisation for each debit below — eDIS record, DDPI, or physical instruction.");
+
+    add("low","Debit corroborated by the settlement obligation but no authentication located",
+      "The quantity debited reconciles to the settlement obligation — across all clients on it where the obligation covers more than one — so an independent exchange record confirms the sale and the debit is expected. No eDIS authentication was located. Shown for completeness: an obligation evidences the sale, not the client's authorisation to debit, so these belong in the working papers even though they do not warrant a query.",
+      unauth.filter(u=>reconciles(u)&&!u.txns.every(t=>t.authTier==="absent"))
+            .map(u=>Object.assign({},u,{evidence:evidence(u)})),"");
+
+  } else {
+    add("review","Electronic authorisation asserted, not verified",
+      "These carry DISTpInd = ESP, a flag the broker sets in its own API call. Load the broker's log to verify any of it.",
+      txns.filter(t=>t.elec&&t.settled>0),"");
+  }
+
+  // 4. many markings against one settlement — test whether they over-delivered
+  // against the exchange obligation, rather than asking the DP to check.
+  // Every group with a known obligation is tested, not only the clusters —
+  // a single transaction can exceed its obligation just as a cluster can.
+  const over=[],ok=[],shared=[];
+  // Aggregate the shared obligations across their clients and test once.
+  const agg=new Map();
+  util.filter(u=>u.obligShared&&u.obligAll!==undefined&&u.obligAll!==null).forEach(u=>{
+    const k=[u.isin,u.settle].join("|");
+    if(!agg.has(k)) agg.set(k,{isin:u.isin,settle:u.settle,oblig:u.obligAll,from:u.from,
+      clients:new Set(),n:0,earm:0,settled:0,reversed:0,net:0,txnIds:[]});
+    const a=agg.get(k);
+    a.clients.add(u.client); a.n+=u.n; a.earm+=u.earm; a.settled+=u.settled;
+    a.reversed+=u.reversed; a.net+=u.net; a.txnIds.push(u.txnId);
+    if(u.from<a.from) a.from=u.from;
+  });
+  agg.forEach(a=>{
+    const row={client:[...a.clients].join(", "),isin:a.isin,settle:a.settle,from:a.from,
+      n:a.n,oblig:a.oblig,earm:a.earm,settled:a.settled,reversed:a.reversed,net:a.net,
+      txnId:a.txnIds.join(", "),txns:[],qty:a.settled,
+      note:"one obligation of "+a.oblig.toLocaleString("en-IN")+" covering "+a.clients.size
+        +" clients; net delivered across them "+a.net.toLocaleString("en-IN")
+        +(a.net-a.oblig>0.0005?" — exceeds the obligation":" — reconciles")};
+    if(a.net-a.oblig>0.0005) over.push(row); else shared.push(row);
+  });
+
+  util.forEach(u=>{
+    if(u.obligShared) return;   // handled in aggregate above
+    const o=u.oblig;
+    if(o===undefined||o===null){ if(u.n>=3) ok.push(Object.assign({},u,{
+      note:u.n+" markings; "+u.settled.toLocaleString("en-IN")+" delivered; no obligation row in these files"})); }
+    else if(u.net-(u.credited||0)-o>0.0005){ over.push(Object.assign({},u,{
+      note:"obligation "+o.toLocaleString("en-IN")+"; delivered "+u.settled.toLocaleString("en-IN")
+        +(u.credited?", credited back "+u.credited.toLocaleString("en-IN"):"")
+        +" — "+(u.net-(u.credited||0)-o).toLocaleString("en-IN")+" more than the obligation"})); }
+    else if(u.n>=3){ ok.push(Object.assign({},u,{
+      note:u.n+" markings; obligation "+o.toLocaleString("en-IN")+", delivered "
+        +u.settled.toLocaleString("en-IN")
+        +(u.credited?", credited back "+u.credited.toLocaleString("en-IN")+" against the same settlement":"")
+        +" — reconciles"})); }
+  });
+
+  add("critical","Delivered more than the settlement obligation",
+    "Securities debited from the client, less anything credited back against the same settlement, still exceed the obligation set up for it. Quantities are taken from the debit rows themselves, which are already net of any earmark reversal, so a partial reversal is not counted as a delivery.",
+    over,"Reconcile the net delivered quantity to the obligation.");
+
+  add("low","One obligation covering several clients",
+    "A single settlement obligation on the broker's pool account covers more than one client, so it is not a per-client ceiling and cannot be used to test any one client in isolation. The tool compares the net delivered across all clients on the obligation instead. Shown for information — these reconcile.",
+    shared,"");
+
+  add("low","One obligation marked in many lots",
+    "One client, one security, one settlement, marked as many separate transactions — the front end submitting in lots rather than once. The delivered total reconciles to the settlement obligation, so no client was debited twice; the effect is on the transaction count in the depository records, not on client holdings.",
+    ok,"Confirm whether marking in lots is intended behaviour in the application.");
+
+  // 5. earmarks still open at the end of the loaded period
+  const openE=txns.filter(t=>t.outcome==="Earmarked, not released");
+  add("review","Earmark still open at the end of the loaded period",
+    "No release stage follows the earmark in the files loaded. Where the next period's COD is loaded alongside, anything that released early in the following month has already been resolved and excluded — so these are the genuinely open ones as at "+(spanEnd||"the period end")+".",
+    openE,"Confirm these released, and when.");
+
+  add("low","Movement on the broker's own account",
+    "No client account appears on these transactions — they move securities on the broker's pool or settlement account. No client was debited, so they are outside the client-authorisation findings. Shown so the population reconciles, and because off-market movements between the pool and client accounts are worth understanding.",
+    txns.filter(t=>t.poolOnly&&t.settled>0),
+    "Explain the purpose of these movements.");
+
+  add("low","Authorised on a physical slip",
+    "Off-market deliveries authorised on paper rather than electronically, and completed. Not a gap — listed so the physical-DIS population is visible for the DIS issuance register work.",
+    txns.filter(t=>t.disSrl),"");
+
+  add("low","Reversed before delivery",
+    "Earmarked and moved, then reversed. The client was not ultimately debited.",
+    txns.filter(t=>t.outcome==="Early pay-in reversed"),"");
+
+  if(hasLog) add("cleared","Covered by DDPI on file",
+    "Clients you have recorded as holding a DDPI, so no per-transaction eDIS is expected. Check each DDPI is validly executed, covers early pay-in, and was in force across these dates.",
+    txns.filter(t=>t.authTier==="ddpi"),
+    "Provide the executed DDPI for each client, with date of execution.");
+
+  const order={critical:0,review:1,low:2,cleared:3};
+  G.sort((a,b)=>order[a.sev]-order[b.sev]||b.n-a.n);
+  return G;
+}
+
+/* ---------- exceptions ---------- */
+function buildExceptions(txns){
+  const ex=[];
+  const push=(g,d,t,note)=>ex.push(Object.assign({},t,{group:g,groupDesc:d,note}));
+
+  txns.filter(t=>t.outcome==="Cancelled by CDSL").forEach(t=>push(
+    "Early pay-in cancelled by CDSL",
+    "CDSL closed these with stage code EPCRJ — the catalogue defines that as an overdue early-pay-in cancellation, or a rejection because no matching clearing-corporation obligation was found. Nothing was earmarked and nothing moved. Establish why the instruction was raised when there was no obligation against it, and confirm the client was told.",
+    t,"Stage chain ends at EPCRJ, nothing earmarked"));
+
+  txns.filter(t=>t.outcome==="Early pay-in reversed").forEach(t=>push(
+    "Early pay-in reversed",
+    "The shares were earmarked and moved, then reversed under stage code EPRVCA before final delivery. The client was not ultimately debited. Confirm the sale obligation was met another way and that the client's holding was restored in full.",
+    t,"Reversed quantity "+t.reversed.toLocaleString("en-IN")));
+
+  txns.filter(t=>t.outcome==="Earmarked, not released").forEach(t=>push(
+    "Earmarked but never released",
+    "An earmark was created and no reverse-earmark stage followed within this file. The shares are still blocked in the client's account as at the end of the period. Either the file is cut off mid-lifecycle or the earmark is genuinely outstanding — check the next period's file.",
+    t,"Earmarked "+t.earmarked.toLocaleString("en-IN")+", released nil"));
+
+  txns.filter(t=>t.earmarked>0&&t.released>0&&Math.abs(t.earmarked-t.released)>0.0005).forEach(t=>push(
+    "Earmarked and released quantities differ",
+    "The quantity earmarked does not equal the quantity released. On a clean delivery these match. A difference means partial execution or a correction, and needs to be traced to the settlement.",
+    t,"Earmarked "+t.earmarked+" vs released "+t.released));
+
+  txns.filter(t=>t.authCls==="stand"&&t.dir==="Sell / delivery").forEach(t=>push(
+    "Electronic debit with no eDIS authentication logged",
+    "CDSL records these as electronically authorised, but the broker's log shows only an early-pay-in marking call — no TPIN/OTP authentication against the specific debit. That points to a standing authorisation, normally DDPI. Obtain the DDPI for each client involved and check it is validly executed, covers this purpose, and was in force on the transaction date. If no DDPI exists, these are client debits without authorisation.",
+    t,"Marked through the early pay-in API, no eDIS authentication"));
+
+  txns.filter(t=>t.authCls==="none").forEach(t=>push(
+    "Electronic debit absent from the broker log entirely",
+    "The transaction is flagged electronic in CDSL but nothing in the broker log corresponds to it. Either the log extract is incomplete for the period or the instruction originated somewhere other than the trading application. Ask for the complete unfiltered log before concluding.",
+    t,"No matching broker log entry"));
+
+  txns.filter(t=>t.disSrl).forEach(t=>push(
+    "Physical delivery instruction slip used",
+    "A DIS serial number is recorded, so this was authorised on paper rather than electronically. Pull the physical slip and check it against the DIS issuance register — serial control, client signature, and that the slip was issued to the account holder.",
+    t,"DIS serial "+t.disSrl));
+
+  // debits authorised through no visible channel
+  txns.filter(t=>!t.elec&&!t.disSrl&&t.settled>0&&["IDO","DFP","IDD"].includes(t.typ)).forEach(t=>push(
+    "Client debit with no authorisation trail in the file",
+    "Shares left the client account, but the file shows neither an electronic authorisation nor a physical DIS serial. The instruction may be system-generated or the field may simply not be captured. Ask the DP to evidence how the client authorised this debit.",
+    t,"Debited "+t.settled.toLocaleString("en-IN")+", DIS type "+(t.disTp||"not captured")));
+
+  // repeated attempts for the same obligation
+  const seen=new Map();
+  txns.filter(t=>t.typ==="IDO").forEach(t=>{
+    const k=[t.client,t.isin,t.qty,t.settle].join("|");
+    if(!seen.has(k)) seen.set(k,[]);
+    seen.get(k).push(t);
+  });
+  seen.forEach((list)=>{
+    if(list.length>=3){
+      const failed=list.filter(t=>t.cls==="fail").length;
+      list.forEach(t=>push(
+        "Same obligation attempted repeatedly",
+        "The same client, ISIN, quantity and settlement number was set up as a separate transaction several times over. That usually means the front end retried against a shortage or a rejection. Check that this produced no duplicate debit and that the underlying shortage was resolved.",
+        t,list.length+" transactions for this combination, "+failed+" cancelled"));
+    }
+  });
+
+  const order=t=>["Early pay-in cancelled by CDSL","Early pay-in reversed","Earmarked but never released",
+    "Earmarked and released quantities differ","Physical delivery instruction slip used",
+    "Client debit with no authorisation trail in the file","Same obligation attempted repeatedly",
+    "Electronic debit with no eDIS authentication logged","Electronic debit absent from the broker log entirely"].indexOf(t.group);
+  ex.sort((a,b)=>order(a)-order(b)||(a.from||"").localeCompare(b.from||""));
+  return ex;
+}
+
+/* ---------- cross-check against broker log ---------- */
+function buildReco(txns,logRows){
+  const k=(b,i,q,s)=>[b,i,Math.round(num(q)*1000),s].join("|");
+  // The broker log usually spans a longer period than the COD file.
+  // Comparing outside the COD's own dates would report false gaps, so
+  // clip the log to the period the COD actually covers.
+  const ds=txns.map(t=>t.from).filter(Boolean).sort();
+  const lo=ds[0]||"", hi=ds[ds.length-1]||"";
+  const inPeriod=r=>{
+    const d=(r.log_time||"").slice(0,10).replace(/\//g,"-");
+    return !d||!lo||(d>=lo&&d<=hi);
+  };
+  const logMap=new Map();
+  logRows.filter(inPeriod).forEach(r=>{
+    let b,i,q,s,kind;
+    if(r.log_type==="EarlyPayIn_Payload"){b=r.boid;i=r.ep_isin;q=r.ep_qty;s=r.settle_id;kind="Early pay-in";}
+    else if(r.log_type==="PrepareDataForEdisFormat"){b=r.boid;i=r.record_isin;q=r.record_quantity;s=r.record_settle_id;kind="eDIS authorisation";}
+    else return;
+    if(!b||!i) return;
+    const key=k(b,i,q,s);
+    if(!logMap.has(key)) logMap.set(key,{n:0,kind:new Set(),first:r.log_time,boid:b,isin:i,qty:num(q),settle:s});
+    const e=logMap.get(key); e.n++; e.kind.add(kind);
+    if(r.log_time<e.first) e.first=r.log_time;
+  });
+
+  // Only client-instructed deliveries can have a broker authorisation record.
+  // Freezes, exchange payouts, corporate actions and obligation setups are
+  // raised by CDSL or the exchange, so comparing them would manufacture
+  // findings that mean nothing.
+  const INSTRUCTED=["IDO","DFP","IDD"];
+  const codMap=new Map();
+  txns.filter(t=>INSTRUCTED.includes(t.typ)).forEach(t=>{
+    const key=k(t.client,t.isin,t.qty,t.settle);
+    if(!codMap.has(key)) codMap.set(key,[]);
+    codMap.get(key).push(t);
+  });
+
+  const rows=[];
+  codMap.forEach((list,key)=>{
+    const l=logMap.get(key);
+    const t=list[0];
+    rows.push({side:l?"Matched":"In CDSL only", cls:l?"ok":"fail",
+      client:t.client,isin:t.isin,qty:t.qty,settle:t.settle,
+      cod:list.length, log:l?l.n:0, kind:l?[...l.kind].join(" + "):"—",
+      outcome:[...new Set(list.map(x=>x.outcome))].join(", "),
+      from:t.from, txnId:list.map(x=>x.txnId).join(", "),
+      note:l?(l.n+" attempt(s) in broker log, "+list.length+" transaction(s) in CDSL")
+             :"No matching entry in the broker log"});
+  });
+  logMap.forEach((l,key)=>{
+    if(codMap.has(key)) return;
+    rows.push({side:"In broker log only",cls:"inc",
+      client:l.boid,isin:l.isin,qty:l.qty,settle:l.settle,
+      cod:0,log:l.n,kind:[...l.kind].join(" + "),outcome:"—",
+      from:(l.first||"").slice(0,10).replace(/\//g,"-"),txnId:"",
+      note:l.n+" attempt(s) at the broker, nothing created in CDSL"});
+  });
+  rows.sort((a,b)=>a.side.localeCompare(b.side)||(a.from||"").localeCompare(b.from||""));
+  return rows;
+}
+
+/* ---------- columns ---------- */
+const COLS={
+  txn:[{k:"txnId",t:"Txn ID",c:"m"},{k:"from",t:"Date",c:"m"},{k:"typ",t:"Type",c:"m"},
+    {k:"dir",t:"Direction",c:""},
+    {k:"client",t:"Client BOID",c:"m"},{k:"isin",t:"ISIN",c:"m"},{k:"qty",t:"Quantity",c:"num"},
+    {k:"settled",t:"Settled",c:"num"},{k:"outcome",t:"Outcome",c:"pill"},
+    {k:"auth",t:"Authorisation",c:""},{k:"settle",t:"Settlement no.",c:"m"},
+    {k:"mkt",t:"Market",c:"m"},{k:"nStages",t:"Stages",c:"num"}],
+  edis:[{k:"txnId",t:"Txn ID",c:"m"},{k:"from",t:"Date",c:"m"},{k:"typ",t:"Type",c:"m"},
+    {k:"dir",t:"Direction",c:""},
+    {k:"client",t:"Client BOID",c:"m"},{k:"isin",t:"ISIN",c:"m"},{k:"qty",t:"Quantity",c:"num"},
+    {k:"earmarked",t:"Earmarked",c:"num"},{k:"settled",t:"Settled",c:"num"},
+    {k:"outcome",t:"Outcome",c:"pill"},{k:"auth",t:"Authorisation",c:""},
+    {k:"disTp",t:"DIS type",c:"m"},{k:"chan",t:"Channel",c:"m"},
+    {k:"ucc",t:"UCC",c:"m"},{k:"settle",t:"Settlement no.",c:"m"}],
+  exc:[{k:"txnId",t:"Txn ID",c:"m"},{k:"from",t:"Date",c:"m"},{k:"typ",t:"Type",c:"m"},
+    {k:"client",t:"Client BOID",c:"m"},{k:"isin",t:"ISIN",c:"m"},{k:"qty",t:"Quantity",c:"num"},
+    {k:"settle",t:"Settlement no.",c:"m"},{k:"note",t:"Finding",c:""}],
+  reco:[{k:"side",t:"Result",c:"pill"},{k:"from",t:"Date",c:"m"},{k:"client",t:"Client BOID",c:"m"},
+    {k:"isin",t:"ISIN",c:"m"},{k:"qty",t:"Quantity",c:"num"},{k:"settle",t:"Settlement no.",c:"m"},
+    {k:"kind",t:"Broker flow",c:""},{k:"log",t:"Log attempts",c:"num"},{k:"cod",t:"CDSL txns",c:"num"},
+    {k:"outcome",t:"CDSL outcome",c:""},{k:"note",t:"Reading",c:""}]
+};
+
+/* ---------- render ---------- */
+let view="gaps",sortKey=null,sortDir=1,open=new Set(),OPENG=new Set(),GAPS=[],UTIL=[],CHK=[];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
+const rowsFor=v=>v==="txn"?TXN:v==="edis"?TXN.filter(t=>t.elec||t.disSrl):v==="exc"?EXC:v==="reco"?RECO:[];  // gaps and chk render their own views
+
+function decorate(t){
+  if(view==="reco") return t;
+  return Object.assign({},t,{auth: t.authSrc
+    || (t.elec?("Electronic"+(t.disSrl?" + physical slip":"")) : (t.disSrl?"Physical DIS "+t.disSrl:"Not captured"))});
+}
+
+function filtered(){
+  const from=$("f-from").value,to=$("f-to").value,typ=$("f-typ").value,
+        dir=$("f-dir").value,auth=$("f-auth").value,
+        out=$("f-out").value,cl=$("f-cl").value,isin=$("f-isin").value,
+        q=$("f-q").value.trim().toLowerCase();
+  let rs=rowsFor(view).map(decorate).filter(r=>{
+    if(from&&r.from&&r.from<from) return false;
+    if(to&&r.from&&r.from>to) return false;
+    if(typ&&r.typ!==typ) return false;
+    if(dir&&r.dir!==dir) return false;
+    if(auth&&(r.authSrc||"")!==auth) return false;
+    if(out){ if(view==="exc"){if(r.group!==out) return false;} else if(r.outcome!==out&&r.side!==out) return false; }
+    if(cl&&r.client!==cl) return false;
+    if(isin&&r.isin!==isin) return false;
+    if(q&&!Object.entries(r).filter(([k])=>k!=="rows").some(([,v])=>String(v).toLowerCase().includes(q))) return false;
+    return true;
+  });
+  if(sortKey) rs=rs.slice().sort((a,b)=>{
+    const x=a[sortKey],y=b[sortKey];
+    if(typeof x==="number"&&typeof y==="number") return (x-y)*sortDir;
+    return String(x??"").localeCompare(String(y??""))*sortDir;
+  });
+  return rs;
+}
+
+function stageTable(t){
+  const f=["LineNb","TxnCd","BizDt","ClntId","ISIN","Qty","AccptdQty","ActlQty","EarmrkdQty","FinFlg","DISTpInd","ChanlInd"];
+  const lbl={LineNb:"Line",TxnCd:"Stage",BizDt:"Date",ClntId:"Account",Qty:"Qty",
+    AccptdQty:"AccptdQty",ActlQty:"ActlQty",EarmrkdQty:"EarmrkdQty",FinFlg:"Fin",DISTpInd:"DIS",ChanlInd:"Chan"};
+  let h='<div class="stages"><h5>Stage rows as they appear in the file — '+esc(t.chain)+'</h5><table class="st"><thead><tr>'
+    +f.map(x=>"<th>"+(lbl[x]||x)+"</th>").join("")+"<th>Stage meaning</th></tr></thead><tbody>";
+  t.rows.forEach(r=>{
+    h+="<tr>"+f.map(x=>{
+      let v=esc(r[x]||"—");
+      if(x==="FinFlg") v='<span class="fin'+(r[x]||0)+'">'+v+"</span>";
+      if(x==="ClntId"&&r[x]!==t.client) v='<span style="color:var(--mute)">'+v+"</span>";
+      return "<td>"+v+"</td>";
+    }).join("")+"<td>"+esc(mean("TxnCd",r.TxnCd)||"—")+"</td></tr>";
+  });
+  return h+"</tbody></table></div>";
+}
+
+function renderGaps(){
+  const box=$("gapwrap");
+  if(!GAPS.length){ box.innerHTML='<div class="empty"><b>Nothing flagged</b>Every transaction is accounted for.</div>'; return; }
+  const lbl={critical:"Act on this",review:"Verify",low:"Note",cleared:"Cleared"};
+  box.innerHTML=GAPS.map((g,i)=>{
+    const isC=g.rows[0]&&g.rows[0].txns;   // cluster/utilisation rows
+    const cols=isC?["from","client","isin","settle","n","oblig","earm","settled","reversed","credited","evidence","note"]
+                  :["txnId","from","client","isin","qty","settled","outcome","authSrc"];
+    const head=isC?["First date","Client BOID","ISIN","Settlement","Txns","Obligation","Earmarked","Debited","Reversed","Credited back","Evidence","Detail"]
+                  :["Txn ID","Date","Client BOID","ISIN","Qty","Settled","Outcome","Authorisation"];
+    const body=g.rows.slice(0,500).map(r=>"<tr>"+cols.map(c=>{
+      let v=r[c];
+      if(["qty","settled","earm","auth","reversed","net","credited"].includes(c)) v=(v||0).toLocaleString("en-IN");
+      else if(c==="oblig") v=(v===undefined||v===null)?"—":v.toLocaleString("en-IN");
+      return "<td>"+esc(String(v??"—")||"—")+"</td>";}).join("")+"</tr>"
+      +(isC&&OPENG.has(i)?`<tr><td colspan="${cols.length}" style="padding:4px 9px 10px;color:var(--mute);font-family:var(--mono);font-size:10.5px">ids: ${esc(r.txnId)}</td></tr>`:"")
+    ).join("");
+    return `<div class="gap" data-i="${i}">
+      <div class="gap-h">
+        <span class="sev s-${g.sev}">${lbl[g.sev]}</span>
+        <div class="gap-t"><h4>${esc(g.title)}</h4><p>${esc(g.why)}</p>
+          ${g.ask?`<p class="ask"><strong>Ask the DP:</strong> ${esc(g.ask)}</p>`:""}</div>
+        <div class="gap-n"><div class="b">${g.n}</div><div class="s">${g.qty?g.qty.toLocaleString("en-IN")+" sh":"no debit"}</div></div>
+      </div>
+      ${OPENG.has(i)?`<div class="gap-rows"><table><thead><tr>${head.map(x=>"<th>"+x+"</th>").join("")}</tr></thead><tbody>${body}</tbody></table>${g.rows.length>500?'<p style="font-size:11px;color:var(--mute);padding:8px 0">First 500 shown — export for the full list.</p>':''}</div>`:""}
+    </div>`;
+  }).join("");
+  box.querySelectorAll(".gap").forEach(el=>el.onclick=()=>{
+    const i=+el.dataset.i; OPENG.has(i)?OPENG.delete(i):OPENG.add(i); renderGaps();
+  });
+}
+
+function renderChecklist(){
+  const box=$("chkwrap");
+  const lbl={yes:"Evidenced",partial:"Partly",no:"Not from data"};
+  const counts=CHK.reduce((a,c)=>{a[c.verdict]=(a[c.verdict]||0)+1;return a;},{});
+  box.innerHTML=`<div class="exgroup"><h4>What these files can and cannot evidence</h4>
+    <p>${counts.yes||0} point(s) evidenced by the data, ${counts.partial||0} partly, ${counts.no||0} that no
+    amount of transaction analysis will answer — those need a document, a portal walkthrough or a system
+    demonstration. The tool does not answer the checklist for you; it tells you what you can support from the
+    records and what you still have to obtain.</p></div>`
+   + CHK.map(c=>`<div class="chk">
+      <div class="vn">${c.n}</div>
+      <div class="vd v-${c.verdict}">${lbl[c.verdict]}</div>
+      <div class="ct"><h4>${esc(c.point)}</h4>
+        <div class="bs">${esc(c.basis)}</div>
+        <p>${esc(c.detail)}</p></div></div>`).join("");
+}
+
+function renderFunnel(){
+  const el=$("funnel");
+  const ido=TXN.filter(t=>t.typ==="IDO");
+  if(!ido.length||!HASLOG){ $("funnelpanel").classList.add("hide"); return; }
+  $("funnelpanel").classList.remove("hide");
+  const tier=n=>ido.filter(t=>t.authTier===n);
+  const excess=UTIL.filter(u=>u.excessEarm>0.0005||u.excessSettled>0.0005).length;
+  const steps=[
+    {c:"f-all", n:ido.length, l:"<b>early pay-in transactions</b> in the loaded period"},
+    {c:"f-edis",n:tier("edis").length, l:"eDIS authentication on file for that security"},
+    {c:"f-ddpi",n:tier("ddpi").length, l:"covered by a DDPI you have recorded"},
+    {c:"f-near",n:tier("marked").length, l:"marked by the broker, no eDIS for that security"},
+    {c:"f-bad", n:tier("absent").filter(t=>t.settled>0).length,
+      l:"<b>debited with no record in the broker's log</b>"}
+  ];
+  const max=Math.max(...steps.map(s=>s.n),1), W=430;
+  el.innerHTML=steps.map(s=>`<div class="fstep">
+    <div class="bar ${s.c}" style="width:${Math.max(26,(s.n/max)*W)}px">${s.n}</div>
+    <div class="lbl">${s.l}</div></div>`).join("");
+  const bad=tier("absent").filter(t=>t.settled>0);
+  const q=bad.reduce((s,t)=>s+t.settled,0);
+  $("funnelnote").className="caveat"+(bad.length||excess?"":" info");
+  $("funnelnote").innerHTML=(bad.length
+    ? `<b>${bad.length} transaction${bad.length>1?"s":""}</b> moved <b>${q.toLocaleString("en-IN")}</b> shares
+       out of client accounts with no matching entry in the broker's log — the CDSL transaction id appears nowhere in it. `
+    : `<b>Every settled transaction is present in the broker's log.</b> `)
+   + (excess
+    ? `<b>${excess} client/security/settlement group${excess>1?"s":""}</b> used more than the client authenticated. `
+    : `No group used more than the client authenticated — using less than authorised is normal and is not flagged. `)
+   + `Load consecutive months together so earmarks that release early in the following period resolve automatically.`;
+}
+
+function render(){
+  if(view==="chk"){
+    $("chkwrap").classList.remove("hide");$("gapwrap").classList.add("hide");
+    $("tablewrap").classList.add("hide");$("exhead").innerHTML="";
+    $("showing").textContent=CHK.length+" checklist points";
+    $("qtysum").textContent="";
+    renderChecklist(); return;
+  }
+  $("chkwrap").classList.add("hide");
+  if(view==="gaps"){
+    $("gapwrap").classList.remove("hide");
+    $("tablewrap").classList.add("hide");
+    $("exhead").innerHTML=""; $("showing").textContent=GAPS.length+" findings";
+    $("qtysum").textContent="click a finding for its schedule";
+    renderGaps(); return;
+  }
+  $("gapwrap").classList.add("hide");
+  $("tablewrap").classList.remove("hide");
+  const cols=COLS[view],rs=filtered();
+  $("thead").innerHTML="<tr>"+cols.map(c=>`<th data-k="${c.k}">${c.t}${sortKey===c.k?(sortDir>0?" ▲":" ▼"):""}</th>`).join("")+"</tr>";
+  $("thead").querySelectorAll("th").forEach(th=>th.onclick=()=>{
+    const k=th.dataset.k; if(sortKey===k) sortDir=-sortDir; else{sortKey=k;sortDir=1;} render();
+  });
+
+  $("exhead").innerHTML="";
+  if(view==="exc"&&rs.length){
+    const gs=[...new Set(rs.map(r=>r.group))];
+    if(gs.length===1) $("exhead").innerHTML=`<div class="exgroup"><h4><span class="c">${rs.length}</span>${esc(rs[0].group)}</h4><p>${esc(rs[0].groupDesc)}</p></div>`;
+  }
+
+  if(!rs.length){
+    $("tbody").innerHTML=`<tr><td colspan="${cols.length}"><div class="empty"><b>Nothing matches these filters</b>Widen the dates or clear the filters.</div></td></tr>`;
+  } else {
+    let h="";
+    rs.forEach((r,idx)=>{
+      const canOpen=!!r.rows;
+      h+=`<tr class="tx" data-i="${idx}">`+cols.map((c,i)=>{
+        let v=r[c.k]??"";let cls=c.c==="pill"?"":c.c;
+        if(i===0) cls+=" rail r-"+(r.cls||"gap");
+        if(c.c==="pill") v=`<span class="pill p-${r.cls||"gap"}">${esc(String(v))}</span>`;
+        else if(c.c==="num") v=v===0?'<span style="color:var(--mute)">0</span>':Number(v).toLocaleString("en-IN");
+        else if(c.k==="typ") v=`<span title="${esc(r.typMean||"")}">${esc(String(v))}</span>`;
+        else v=esc(String(v))||'<span style="color:var(--mute)">—</span>';
+        if(i===0&&r.elec) v+=' <span class="edisbadge">e</span>';
+        return `<td class="${cls.trim()}">${v}</td>`;
+      }).join("")+"</tr>";
+      if(canOpen&&open.has(r.txnId+"|"+idx)) h+=`<tr class="detail"><td colspan="${cols.length}">${stageTable(r)}</td></tr>`;
+    });
+    $("tbody").innerHTML=h;
+    $("tbody").querySelectorAll("tr.tx").forEach(tr=>tr.onclick=()=>{
+      const i=tr.dataset.i,r=rs[i]; if(!r.rows) return;
+      const k=r.txnId+"|"+i; open.has(k)?open.delete(k):open.add(k); render();
+    });
+  }
+  const tot=rs.reduce((s,r)=>s+(typeof r.qty==="number"?r.qty:0),0);
+  $("showing").textContent=`${rs.length.toLocaleString("en-IN")} of ${rowsFor(view).length.toLocaleString("en-IN")}`
+    +(view==="txn"||view==="edis"?" transactions":" records")+(rs.some(r=>r.rows)?" · click a row for its stage detail":"");
+  $("qtysum").textContent=`Quantity in view: ${tot.toLocaleString("en-IN")}`;
+}
+
+function fillFilters(){
+  const rs=rowsFor(view); if(!rs.length&&(view==="gaps"||view==="chk")) return;
+  const opt=(el,vals,label)=>{const cur=el.value;
+    el.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option>${esc(v)}</option>`).join("");
+    if(vals.includes(cur)) el.value=cur;};
+  opt($("f-typ"),[...new Set(rs.map(r=>r.typ).filter(Boolean))].sort(),"All types");
+  opt($("f-dir"),[...new Set(rs.map(r=>r.dir).filter(Boolean))].sort(),"Buy and sell");
+  opt($("f-auth"),[...new Set(rs.map(r=>r.authSrc).filter(Boolean))].sort(),"Any authorisation");
+  opt($("f-cl"),[...new Set(rs.map(r=>r.client).filter(Boolean))].sort(),"All clients");
+  opt($("f-isin"),[...new Set(rs.map(r=>r.isin).filter(Boolean))].sort(),"All ISINs");
+  if(view==="exc") opt($("f-out"),[...new Set(rs.map(r=>r.group))],"All findings");
+  else if(view==="reco") opt($("f-out"),[...new Set(rs.map(r=>r.side))].sort(),"All results");
+  else opt($("f-out"),[...new Set(rs.map(r=>r.outcome))].sort(),"All outcomes");
+}
+
+function renderOverview(){
+  const byTyp={};
+  TXN.forEach(t=>{byTyp[t.typ]=(byTyp[t.typ]||0)+1;});
+  $("typegrid").innerHTML=Object.entries(byTyp).sort((a,b)=>b[1]-a[1]).map(([k,v])=>
+    `<div class="ty"><span class="n">${v}</span><div class="code">${esc(k)}</div>
+     <div class="mean">${esc(mean("TxnTyp",k)||"Not in catalogue")}</div></div>`).join("");
+
+  const ido=TXN.filter(t=>t.typ==="IDO");
+  $("reconpanel").classList.toggle("hide",!ido.length);
+  if(ido.length){
+    const buckets=[
+      {l:"delivered to the clearing corporation",c:"b-ok",f:t=>t.cls==="ok"},
+      {l:"reversed before delivery",c:"b-rev",f:t=>t.outcome==="Early pay-in reversed"},
+      {l:"cancelled by CDSL",c:"b-fail",f:t=>t.outcome==="Cancelled by CDSL"},
+      {l:"earmarked and still open",c:"b-inc",f:t=>t.outcome==="Earmarked, not released"},
+      {l:"other",c:"b-gap",f:t=>!["ok"].includes(t.cls)&&!["Early pay-in reversed","Cancelled by CDSL","Earmarked, not released"].includes(t.outcome)}
+    ].map(b=>({...b,n:ido.filter(b.f).length,q:ido.filter(b.f).reduce((s,t)=>s+t.qty,0)})).filter(b=>b.n);
+    $("r-total").textContent=ido.length;
+    const max=Math.max(...buckets.map(b=>b.n),1),W=360;
+    $("r-legend").innerHTML=buckets.map(b=>`<div class="leg">
+      <div class="bar ${b.c}" style="width:${Math.max(3,(b.n/max)*W)}px"></div>
+      <div class="txt"><b>${b.n}</b>${b.l}<span class="pc">${((b.n/ido.length)*100).toFixed(1)}% · ${b.q.toLocaleString("en-IN")} sh</span></div></div>`).join("");
+    const del=ido.filter(t=>t.cls==="ok");
+    $("qtycaveat").innerHTML=`<b>Reading the quantity columns.</b> The UDiFF quantity fields change meaning
+      with the stage, so they cannot be added up across a transaction. This tool takes the debited quantity from
+      <code>Qty</code> on the client's own DBT row, because on a partly reversed earmark
+      <code>AccptdQty</code> stays at the original earmark while <code>Qty</code> falls to what was actually
+      debited — earmark 78, reversed 77, <code>Qty</code> 1 but <code>AccptdQty</code> still 78.
+      <code>Qty</code> is therefore already net of reversals and is not netted again.
+      <code>ActlQty</code> on a reversal row is the quantity reversed, which the catalogue supports directly.
+      Debited quantity across the ${del.length} completed early pay-ins here is
+      <b>${del.reduce((s,t)=>s+t.settled,0).toLocaleString("en-IN")}</b> shares.
+      <span style="display:block;margin-top:9px"><b>Two readings are inferred, not documented.</b> The UDiFF
+      catalogue lists <code>AccptdQty</code> as both "Settled Qty" and "Earmark Qty" without saying which
+      applies at which stage, and does not define <code>FinFlg</code> at all (here 1 moves a balance, 0 is
+      instruction-stage, 2 is a reversal leg). Both readings are inferred from how this file behaves and are
+      corroborated by the settlement obligations reconciling. Confirm both with CDSL before stating them as a
+      basis in a report.</span>`;
+  }
+  $("c-chk").textContent=CHK.filter(c=>c.verdict!=="no").length+"/"+CHK.length;
+  $("c-gaps").textContent=GAPS.filter(g=>g.sev==="critical").reduce((s,g)=>s+g.n,0)||GAPS.length;
+  $("c-txn").textContent=TXN.length;
+  $("c-edis").textContent=TXN.filter(t=>t.elec||t.disSrl).length;
+  $("c-exc").textContent=EXC.length;
+  $("c-reco").textContent=RECO.length;
+}
+
+/* ---------- io ---------- */
+$("export").onclick=()=>{
+  const q=s=>`"${String(s??"").replace(/"/g,'""')}"`;
+  if(view==="chk"){
+    $("chkwrap").classList.remove("hide");$("gapwrap").classList.add("hide");
+    $("tablewrap").classList.add("hide");$("exhead").innerHTML="";
+    $("showing").textContent=CHK.length+" checklist points";
+    $("qtysum").textContent="";
+    renderChecklist(); return;
+  }
+  $("chkwrap").classList.add("hide");
+  if(view==="gaps"){
+    const hd=["Severity","Finding","Txn ID","Date","Client BOID","ISIN","Qty","Settled","Outcome","Authorisation"];
+    let out=hd.map(q).join(",")+"\r\n";
+    GAPS.forEach(g=>g.rows.forEach(r=>{
+      out+=[g.sev,g.title,r.txnId,r.from,r.client,r.isin,r.qty,r.settled,r.outcome,r.authSrc].map(q).join(",")+"\r\n";
+    }));
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob([out],{type:"text/csv;charset=utf-8"}));
+    a.download=`COD_v10_gaps_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href);
+    return;
+  }
+  const cols=COLS[view],rs=filtered();
+  let csv=cols.map(c=>q(c.t)).join(",")+"\r\n";
+  csv+=rs.map(r=>cols.map(c=>q(r[c.k])).join(",")).join("\r\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  a.download=`COD_${view}_${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href);
+};
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected","false"));
+  t.setAttribute("aria-selected","true");
+  view=t.dataset.view;sortKey=null;open.clear();$("f-out").value="";fillFilters();render();
+});
+["f-from","f-to","f-typ","f-dir","f-auth","f-out","f-cl","f-isin","f-q"].forEach(id=>{
+  $(id).addEventListener("input",render);$(id).addEventListener("change",render);});
+$("clearf").onclick=()=>{["f-from","f-to","f-typ","f-dir","f-auth","f-out","f-cl","f-isin","f-q"].forEach(id=>$(id).value="");render();};
+
+$("dpnote").onclick=()=>{
+  const dates=TXN.map(t=>t.from).filter(Boolean).sort();
+  const period=dates.length?dates[0]+" to "+dates[dates.length-1]:"";
+  const dp=(codRows[0]||{}).CntrlSctiesDpstryPtcpt||(codRows[0]||{}).SrcCntrlSctiesDpstryPtcpt||"";
+  const show=GAPS.filter(g=>(g.sev==="critical"||g.sev==="review")&&g.ask);
+  const esc2=s=>String(s??"").replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m]));
+  let n=0;
+  const secs=show.map(g=>{
+    n++;
+    const isC=g.rows[0]&&g.rows[0].txns;
+    const cols=isC?[["from","First date"],["client","Client BOID"],["isin","ISIN"],["settle","Settlement"],
+                    ["n","Txns"],["oblig","Obligation"],["earm","Earmarked"],["settled","Debited"],
+                    ["reversed","Reversed"],["credited","Credited back"],["evidence","Evidence"],["note","Detail"]]
+                  :[["txnId","Txn ID"],["from","Date"],["client","Client BOID"],["isin","ISIN"],
+                    ["qty","Qty"],["settled","Settled"],["outcome","Outcome"]];
+    const rows=g.rows.map(r=>"<tr>"+cols.map(([k])=>{
+      let v=r[k]; if(["qty","settled","earm","reversed","net","credited"].includes(k)) v=(v||0).toLocaleString("en-IN");
+      else if(k==="oblig") v=(v===undefined||v===null)?"—":v.toLocaleString("en-IN");
+      return "<td>"+esc2(v??"")+"</td>";}).join("")+"</tr>").join("");
+    return `<section><h2>${n}. ${esc2(g.title)}</h2>
+      <p class="c">${esc2(g.n)} item${g.n>1?"s":""}${g.qty?" · "+g.qty.toLocaleString("en-IN")+" shares":""}</p>
+      <p>${esc2(g.why)}</p>
+      ${g.ask?`<p class="ask"><b>Requested:</b> ${esc2(g.ask)}</p>`:""}
+      <table><thead><tr>${cols.map(([,l])=>"<th>"+l+"</th>").join("")}</tr></thead><tbody>${rows}</tbody></table></section>`;
+  }).join("");
+
+  const doc=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Concurrent audit — observations for DP response</title>
+  <style>
+  body{font-family:Georgia,'Times New Roman',serif;font-size:12pt;line-height:1.5;color:#111;max-width:1000px;margin:32px auto;padding:0 26px}
+  h1{font-size:19pt;margin:0 0 4px} .meta{color:#555;font-size:10pt;margin-bottom:22px;border-bottom:2px solid #111;padding-bottom:12px}
+  .meta span{margin-right:20px}
+  .intro{background:#f6f6f4;border-left:3px solid #555;padding:12px 15px;font-size:10.5pt;margin-bottom:26px}
+  section{margin:0 0 30px;page-break-inside:avoid}
+  h2{font-size:13pt;margin:0 0 4px;border-bottom:1px solid #bbb;padding-bottom:5px}
+  .c{font-size:9.5pt;color:#777;margin:0 0 8px;font-family:monospace}
+  p{margin:7px 0;font-size:10.5pt}
+  .ask{background:#eef1f6;border-left:3px solid #2C3E5C;padding:9px 12px}
+  table{border-collapse:collapse;width:100%;margin:11px 0;font-size:9pt;font-family:monospace}
+  th{background:#eceeec;text-align:left;padding:5px 7px;border:1px solid #ccc;font-weight:600}
+  td{padding:4px 7px;border:1px solid #ddd}
+  .chk{border-bottom:1px solid var(--rule);padding:15px 18px;display:flex;gap:14px;align-items:flex-start}
+.chk .vn{flex:none;font-family:var(--mono);font-size:11px;color:var(--mute);width:22px;padding-top:3px}
+.chk .vd{flex:none;font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;
+  padding:3px 8px;border-radius:2px;color:#fff;margin-top:1px;width:74px;text-align:center}
+.v-yes{background:var(--verified)} .v-partial{background:var(--amber)} .v-no{background:var(--mute)}
+.chk .ct{flex:1}
+.chk .ct h4{font-size:13.5px;font-weight:600;line-height:1.35}
+.chk .ct .bs{font-family:var(--mono);font-size:10.5px;color:var(--indigo);margin-top:4px}
+.chk .ct p{font-size:12.5px;color:var(--slate);margin-top:6px;max-width:100ch;line-height:1.55}
+@media print{body{margin:0;font-size:10pt} section{page-break-inside:avoid}}
+  </style></head><body>
+  <h1>Concurrent audit — observations for DP response</h1>
+  <div class="meta"><span><b>DP:</b> ${esc2(dp||"—")}</span><span><b>Period:</b> ${esc2(period)}</span>
+    <span><b>Transactions examined:</b> ${TXN.length}</span><span><b>Prepared:</b> ${new Date().toISOString().slice(0,10)}</span></div>
+  <div class="intro">Prepared from the CDSL Common Download file for the period${HASLOG?" read against the broker application logs supplied for the same period":""}.
+  Each observation states what the records show and what is requested. Please respond to each item with supporting evidence.</div>
+  ${secs}
+  </body></html>`;
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([doc],{type:"text/html;charset=utf-8"}));
+  a.download="DP_query_note_v10_"+new Date().toISOString().slice(0,10)+".html";
+  a.click(); URL.revokeObjectURL(a.href);
+};
+
+$("reset").onclick=()=>location.reload();
+$("ddpiapply").onclick=()=>{
+  DDPI=new Set(($("ddpiin").value||"").split(/[\s,;]+/).map(s=>s.trim()).filter(Boolean));
+  const known=new Set(TXN.map(t=>t.client));
+  const hit=[...DDPI].filter(b=>known.has(b)).length;
+  $("ddpistat").textContent=DDPI.size
+    ? `${DDPI.size} BOID${DDPI.size>1?"s":""} entered, ${hit} present in this file`
+    : "register cleared";
+  const sp=TXN.map(t=>t.from).filter(Boolean).sort();
+  UTIL=HASLOG?assessAuth(TXN,logRows):[];
+  GAPS=buildGaps(TXN,UTIL,HASLOG,sp[sp.length-1]||"");
+  CHK=buildChecklist(TXN,UTIL,logRows||[],HASLOG);
+  EXC=buildExceptions(TXN);
+  OPENG.clear(); renderFunnel(); fillFilters(); render();
+};
+
+let codRows=null,logRows=null,codName="",codFiles=[],logFiles=[];
+
+// The log arrives as csv or as an xlsx export; the xlsx puts the settlement in
+// settle_id and splits req_datetime across two columns, so normalise both.
+function normaliseLog(rows){
+  return rows.map(r=>{
+    const o=Object.assign({},r);
+    if(!o.req_datetime) o.req_datetime=o["req_datetime.1"]||o["req_datetime.2"]||"";
+    if(!o.ep_settle_id) o.ep_settle_id=o.settle_id||"";
+    if(!o.settle_id)    o.settle_id=o.ep_settle_id||"";
+    o.log_time=(o.log_time||"").replace(/\//g,"-");
+    return o;
+  });
+}
+
+function readSheet(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>{
+      try{
+        const wb=XLSX.read(new Uint8Array(r.result),{type:"array"});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        res(XLSX.utils.sheet_to_json(ws,{defval:"",raw:false}).map(o=>{
+          const c={}; Object.keys(o).forEach(k=>c[cleanVal(k)]=cleanVal(o[k])); return c;
+        }));
+      }catch(e){ rej(e); }
+    };
+    r.onerror=rej; r.readAsArrayBuffer(file);
+  });
+}
+function readText(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(parseCSV(r.result)); r.onerror=rej; r.readAsText(file);
+  });
+}
+const readAny=f=>/\.xlsx?$/i.test(f.name)?readSheet(f):readText(f);
+
+function wire(dzId,fiId,handler){
+  const dz=$(dzId),fi=$(fiId);
+  dz.onclick=()=>fi.click();
+  dz.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();fi.click();}};
+  dz.ondragover=e=>{e.preventDefault();dz.classList.add("over");};
+  dz.ondragleave=()=>dz.classList.remove("over");
+  dz.ondrop=e=>{e.preventDefault();dz.classList.remove("over");
+    if(e.dataTransfer.files.length) handler([...e.dataTransfer.files]);};
+  fi.onchange=e=>{ if(e.target.files.length) handler([...e.target.files]); };
+}
+
+// TxnID is unique per transaction, so overlapping months de-duplicate safely.
+function mergeRows(existing,incoming,idField){
+  const out=existing?existing.slice():[];
+  const seen=new Set(out.map(r=>idField?r[idField]+"|"+r.LineNb:JSON.stringify(r)));
+  incoming.forEach(r=>{
+    const k=idField?r[idField]+"|"+r.LineNb:JSON.stringify(r);
+    if(!seen.has(k)){ seen.add(k); out.push(r); }
+  });
+  return out;
+}
+
+wire("dz1","fi1",async files=>{
+  try{
+    for(const f of files){
+      const rows=await readAny(f);
+      if(!rows.length||!("TxnID" in rows[0])||!("TxnCd" in rows[0])){
+        alert(f.name+" does not look like a COD file — expected UDiFF columns including TxnID and TxnCd."); continue; }
+      codRows=mergeRows(codRows,rows,"TxnID");
+      codFiles.push(f.name);
+    }
+    if(!codFiles.length) return;
+    $("dz1").classList.add("done");
+    $("dz1").querySelector("h2").textContent=codFiles.length>1?codFiles.length+" COD files loaded":"COD file loaded";
+    $("dz1").querySelector("p").textContent=codFiles.join(" · ");
+    codName=codFiles.join(", ");
+    go();
+  }catch(e){ alert("Could not read that file: "+e.message); }
+});
+
+wire("dz2","fi2",async files=>{
+  try{
+    for(const f of files){
+      const rows=await readAny(f);
+      if(!rows.length||!("log_type" in rows[0])){
+        alert(f.name+" does not look like a broker log — expected a log_type column."); continue; }
+      logRows=mergeRows(logRows,normaliseLog(rows),null);
+      logFiles.push(f.name);
+    }
+    if(!logFiles.length) return;
+    $("dz2").classList.add("done");
+    $("dz2").querySelector("h2").textContent=logFiles.length>1?logFiles.length+" logs loaded":"Broker log loaded";
+    $("dz2").querySelector("p").textContent=logFiles.join(" · ");
+    go();
+  }catch(e){ alert("Could not read that file: "+e.message); }
+});
+
+function go(){
+  if(!codRows) return;
+  TXN=buildTxns(codRows);
+  HASLOG=!!logRows;
+  const sp=TXN.map(t=>t.from).filter(Boolean).sort();
+  UTIL=HASLOG?assessAuth(TXN,logRows):[];
+  GAPS=buildGaps(TXN,UTIL,HASLOG,sp[sp.length-1]||"");
+  EXC=buildExceptions(TXN);
+  RECO=HASLOG?buildReco(TXN,logRows):[];
+  $("tab-reco").classList.toggle("hide",!HASLOG);
+  const dates=TXN.map(t=>t.from).filter(Boolean).sort();
+  const dp=codRows[0].CntrlSctiesDpstryPtcpt||codRows[0].SrcCntrlSctiesDpstryPtcpt||"";
+  $("fname").textContent=codName;
+  $("fmeta").textContent=`${codRows.length.toLocaleString("en-IN")} stage rows › ${TXN.length} transactions`
+    +(dp?` · DP ${dp}`:"")+(dates.length?` · ${dates[0]} to ${dates[dates.length-1]}`:"")
+    +(HASLOG?` · matched against ${logRows.length.toLocaleString("en-IN")} broker log lines from ${logFiles.length} file${logFiles.length>1?"s":""}`:"");
+  $("dropstage").classList.add("hide");$("report").classList.remove("hide");
+  $("ddpipanel").classList.toggle("hide",!HASLOG);
+  renderOverview();renderFunnel();fillFilters();render();
+}
+</script>
+</body>
+</html>
